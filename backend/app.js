@@ -1,8 +1,23 @@
+import dotenv from "dotenv"
+dotenv.config()
+
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { createServer } from 'node:http';
+import { Server } from 'socket.io';
+
 
 const app = express();
+const server = createServer(app);
+console.log(process.env.CORS_ORIGIN)
+const io = new Server(server,{
+  cors:{
+    origin:process.env.CORS_ORIGIN,
+    methods:["GET","POST"],
+    credentials:true
+  }
+});
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN,
@@ -21,4 +36,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-export { app };
+io.on('connection', (socket) => {
+  socket.on('chat message',(msg)=>{
+    console.log("Message is: ", msg)
+  })
+
+})
+
+export { app , server};

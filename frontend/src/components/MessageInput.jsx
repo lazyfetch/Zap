@@ -1,10 +1,16 @@
 import { useState } from "react";
+import { ClientSocket } from "../ClientSocket/ClientSocket";
+
 
 export default function MessageInput() {
   const [message, setMessage] = useState("");
 
   const handleSend = (e) => {
     e.preventDefault();
+    if(message)
+    {
+      ClientSocket(message)
+    }
     if (message.trim() === "") return;
     setMessage("");
   };
