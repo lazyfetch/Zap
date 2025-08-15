@@ -1,17 +1,14 @@
 import { useState } from "react";
-import { ClientSocket } from "../ClientSocket/ClientSocket";
+import { ClientSocket,JoinRoom } from "../ClientSocket/ClientSocket.jsx";
 
 
-export default function MessageInput() {
+export default function MessageInput({ selectedUser,currentUser }) {
   const [message, setMessage] = useState("");
 
   const handleSend = (e) => {
     e.preventDefault();
-    if(message)
-    {
-      ClientSocket(message)
-    }
     if (message.trim() === "") return;
+    ClientSocket(message,currentUser.id,selectedUser.id);
     setMessage("");
   };
 

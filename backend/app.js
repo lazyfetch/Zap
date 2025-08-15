@@ -36,11 +36,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-io.on('connection', (socket) => {
-  socket.on('chat message',(msg)=>{
-    console.log("Message is: ", msg)
-  })
 
+io.on('connection', (socket) => {
+    socket.on('join room', (userId) => {
+      socket.join(userId);
+    });
+    socket.on('chat message', (msgObj) => {
+      io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
+    });
+    
 })
+
+
 
 export { app , server};
