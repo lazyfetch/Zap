@@ -19,21 +19,27 @@ const userSchema = new Schema(
             lowercase: true,
             trim: true, 
         },
-        fullName: 
+        avatar: 
         {
-            type: String,
-            required: true,
-            trim: true, 
-            index: true
-        },
-        avatar: {
             type: String, 
             default:"/avatars/default.png",
         },
-        password: {
+        password: 
+        {
             type: String,
             required: true
-        }
+        },
+        provider: 
+        {
+            type: String,
+            default: "local",
+            enum: ["local", "google", "facebook", "github"]
+        },
+        providerId: 
+        {
+            type: String,
+            default: null
+        },
     },
     {
         timestamps: true
