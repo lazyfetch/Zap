@@ -41,9 +41,11 @@ io.on('connection', (socket) => {
 })
 
 
-import authRouter from "./src/routes/auth.route.js";
+import authRouter from "./src/routes/auth.routes.js";
+import userRouter from "./src/routes/user.routes.js";
 
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/auth", userRouter);
 
 app.use((err, req, res, next) => {
   res.status(err.statusCode || 500).json({
