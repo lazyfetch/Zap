@@ -29,13 +29,6 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(cookieParser());
 
 
-app.use((err, req, res, next) => {
-  res.status(err.statusCode || 500).json({
-    success: false,
-    message: err.message || "Internal Server Error",
-  });
-});
-
 
 io.on('connection', (socket) => {
     socket.on('join room', (userId) => {
@@ -48,5 +41,16 @@ io.on('connection', (socket) => {
 })
 
 
+import authRouter from "./src/routes/auth.route.js";
+
+app.use("/api/v1/auth", authRouter);
+
+app.use((err, req, res, next) => {
+  res.status(err.statusCode || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+    details: err.details || null
+  });
+});
 
 export { app , server};
