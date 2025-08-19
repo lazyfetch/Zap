@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const Login = ({ onLoginSuccess }) => {
+const Login = ({ onLoginSuccess, onShowRegister }) => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -114,9 +114,10 @@ const Login = ({ onLoginSuccess }) => {
         
         <div className="text-center mt-6 text-gray-600">
           <p>
-            Don't have an account? 
-            <button 
-              onClick={() => window.location.href = '/register'} 
+            Don't have an account?
+            <button
+              type="button"
+              onClick={onShowRegister}
               className="ml-1 text-indigo-600 hover:text-indigo-800 font-medium"
             >
               Sign Up

@@ -3,11 +3,13 @@ import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
 import Login from "./AuthComponents/Login";
+import Register from "./AuthComponents/Register"; 
 import { JoinRoom } from "./ClientSocket/ClientSocket";
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [showRegister, setShowRegister] = useState(false); 
   const checkAuth=async()=>{
       try {
         const accessToken = localStorage.getItem('accessToken');
@@ -70,7 +72,9 @@ function App() {
   };
 
   if (!currentUser) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+    return showRegister
+      ? <Register onShowLogin={() => setShowRegister(false)} />
+      : <Login onLoginSuccess={handleLoginSuccess} onShowRegister={() => setShowRegister(true)} />;
   }
 
   return (

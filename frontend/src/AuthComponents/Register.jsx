@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const Register = () => {
+const Register = ({ onShowLogin }) => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -20,8 +20,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (formData.password !== formData.confirmPassword) 
-    {
+    if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
@@ -29,33 +28,29 @@ const Register = () => {
     setIsLoading(true);
     setError('');
 
-    try 
-    {
-      const response=await fetch('http://localhost:3000/api/v1/register', {
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json"
+    try {
+      const response = await fetch('http://localhost:3000/api/v1/auth/register', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
         },
-        body:JSON.stringify({
-            username:formData.username,
-            email:formData.email,
-            password:formData.password
+        body: JSON.stringify({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password
         })
-      })
-      const data=await response.json()
-      if(!response.success)
-      {
+      });
+      const data = await response.json();
+      if (!data.success) 
+      { 
         setError(data.message || "Registration failed.");
-      }
-      else
+      } 
+      else 
       {
         console.log('Register successful with:', formData);
         window.location.href = "/login";
       }
-      
-    } 
-    catch (err) 
-    {
+    } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
     } 
     finally 
@@ -154,9 +149,10 @@ const Register = () => {
         
         <div className="text-center mt-6 text-gray-600">
           <p>
-            Already have an account? 
-            <button 
-              onClick={() => window.location.href = '/login'} 
+            Already have an account?
+            <button
+              type="button"
+              onClick={onShowLogin}
               className="ml-1 text-indigo-600 hover:text-indigo-800 font-medium"
             >
               Sign In
