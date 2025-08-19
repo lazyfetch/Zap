@@ -1,70 +1,96 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
+import Login from "./AuthComponents/Login";
 import { JoinRoom } from "./ClientSocket/ClientSocket";
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
-  const users = [
-  { id: 1, name: "A", online: true },
-  { id: 2, name: "B", online: false },
-  { id: 3, name: "C", online: true },
-]; 
-  const handleUserSelect = (user) => {
+  const checkAuth=async()=>{
+      try {
+        const accessToken = localStorage.getItem('accessToken');
+        const headers = accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {};
+        
+        const response = await fetch('http://localhost:3000/api/v1/users/me', {
+          method: 'GET',
+          headers: headers,
+          credentials: "include"
+        });
+  
+        const data = await response.json()
+  
+        if(data.success)
+        {
+          setCurrentUser(data.data.user);
+          JoinRoom(data.data.user._id); 
+          return;
+        }
+  
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (refreshToken) {
+          const refreshResponse = await fetch('http://localhost:3000/api/v1/auth/refresh-token', {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${refreshToken}` },
+            credentials: "include"
+          });
+  
+          const refreshData = await refreshResponse.json();
+          if (refreshData.success) {
+
+            localStorage.setItem('accessToken', refreshData.data.accessToken);
+            localStorage.setItem('refreshToken', refreshData.data.refreshToken);
+            
+            const newResponse = await fetch('http://localhost:3000/api/v1/users/me', {
+              method: 'GET',
+              headers: { 'Authorization': `Bearer ${refreshData.data.accessToken}` },
+              credentials: "include"
+            });
+  
+            const newData = await newResponse.json();
+            if (newData.success) {
+              setCurrentUser(newData.data.user);
+              JoinRoom(newData.data.user._id);
+            }
+          }
+        }
+      } 
+      catch (error) 
+      {
+        console.log(error)
+      }
+  }
+  useEffect(()=>{
+    checkAuth()
+  },[])
+  const handleLoginSuccess = (user) => {
     setCurrentUser(user);
-    JoinRoom(user.id);
+    JoinRoom(user._id); 
   };
+
+  if (!currentUser) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {!currentUser ? (
-        <div className="flex flex-1 items-center justify-center flex-col gap-4">
-          <h2 className="text-xl font-bold mb-4">
-            Select a user to simulate login:
-          </h2>
-          <div className="flex gap-4">
-            <button
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              onClick={() => handleUserSelect(users[0])}
-            >
-              A
-            </button>
-            <button
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              onClick={() => handleUserSelect(users[1])}
-            >
-              B
-            </button>
-            <button
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              onClick={() => handleUserSelect(users[2])}
-            >
-              C
-            </button>
+      <Sidebar
+        selectedUserId={selectedUser?.id}
+        onSelectUser={setSelectedUser}
+      />
+      <div className="flex flex-col flex-1">
+        {selectedUser ? (
+          <>
+            <ChatWindow currentUser={currentUser} selectedUser={selectedUser} />
+            <MessageInput selectedUser={selectedUser} currentUser={currentUser} />
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-gray-400">
+            Select a user to start chatting
           </div>
-        </div>
-      ) : (
-        <>
-          <Sidebar
-            selectedUserId={selectedUser?.id}
-            onSelectUser={setSelectedUser}
-          />
-          <div className="flex flex-col flex-1">
-            {selectedUser ? (
-              <>
-                <ChatWindow currentUser={currentUser} selectedUser={selectedUser} />
-                <MessageInput selectedUser={selectedUser} currentUser={currentUser} />
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-gray-400">
-                Select a user to start chatting
-              </div>
-            )}
-          </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }

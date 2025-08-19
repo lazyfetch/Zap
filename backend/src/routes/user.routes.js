@@ -4,6 +4,6 @@ import { LoginCheck } from "../controllers/user.controllers.js";
 
 const userRouter=Router()
 
-userRouter.route("/login-check").get(verifyLogin, LoginCheck)
+userRouter.route("/me").get(verifyLogin, LoginCheck)
 
 export default userRouter

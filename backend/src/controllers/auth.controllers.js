@@ -6,22 +6,24 @@ import dotenv from "dotenv"
 dotenv.config()
 import jwt from "jsonwebtoken"
 
-const options={
-    httpOnly:true,
-    secure:true
+const options = {
+  httpOnly: true,
+  secure: false,
+  sameSite: "lax",  
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: "/"
+};
+
+const generateAccessToken = (userId) => {
+    return jwt.sign({userId}, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRATION
+    });
 }
 
-const generateAccessToken= async (userId)=>{
-    const AccessToken=await jwt.sign({userId},process.env.ACCESS_TOKEN_SECRET,{
-        expiresIn:process.env.ACCESS_TOKEN_EXPIRATION
-    })
-    return AccessToken
-}
-const generateRefreshToken=async (userId)=>{
-    const RefreshToken=await jwt.sign({userId},process.env.REFRESH_TOKEN_SECRET,{
-        expiresIn:process.env.REFRESH_TOKEN_EXPIRATION
-    })
-    return RefreshToken
+const generateRefreshToken = (userId) => {
+    return jwt.sign({userId}, process.env.REFRESH_TOKEN_SECRET, {
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRATION
+    });
 }
 
 
@@ -92,8 +94,8 @@ const loginUser=async(req,res,next)=>{
             throw new ApiError(401,"Password is incorrect")
         }
 
-        const AccessToken=await generateAccessToken(user._id)
-        const RefreshToken=await generateRefreshToken(user._id)
+        const AccessToken = generateAccessToken(user._id)
+        const RefreshToken = generateRefreshToken(user._id)
     
         if(!AccessToken || !RefreshToken)
         {
@@ -122,7 +124,7 @@ const loginUser=async(req,res,next)=>{
     } 
     catch (error) 
     {
-        next(error)    
+        return next(error)    
     }
 
 }
@@ -140,66 +142,70 @@ const logoutUser =async(req,res,next)=>{
             new ApiSuccess(200,"User logged out")
         )
     } catch (error) {
-        next(error)
+        return next(error)
     }
 }
 
-const refreshTokens = async(req,res,next)=>{
-    try {
-        const refreshToken = req.cookies?.refreshToken;
-            if (!refreshToken) 
-            {
-                throw new ApiError(401, "No refresh token found")
-            }
-            const decodedUser=await jwt.verify(refreshToken,process.env.REFRESH_TOKEN_SECRET)
-            if(!decodedUser)
-            {
-                res.clearCookie("accessToken", options);
-                res.clearCookie("refreshToken", options);
-                throw new ApiError(401, "Invalid request")
-            }
-            const user=await User.findById(decodedUser.userId)
-            if(!user)
-            {
-                throw new ApiError(400, "User not found")
-            }
-
-            if(user.refreshToken !== refreshToken)
-            {
-                res.clearCookie("accessToken", options);
-                res.clearCookie("refreshToken", options);
-                throw new ApiError(401, "Refresh token does not match");
-            }
-            const newRefreshToken=await generateRefreshToken(user._id)
-            const newAccessToken=await generateAccessToken(user._id)
+const refreshTokens = async(req, res, next) => {
+  try {
+    let refreshToken = req.cookies?.refreshToken;
     
-    
-            if(!newRefreshToken || !newAccessToken)
-            {
-                throw new ApiError(500, "Error creating new tokens")
-            }
-            user.refreshToken=newRefreshToken
-            await user.save({validateBeforeSave:false})
-    
-            return res.status(200)
-            .cookie("accessToken",newAccessToken,options)
-            .cookie("refreshToken",newRefreshToken,options)
-            .json(
-                new ApiSuccess(200,"Tokens refreshed successfully",
-                {
-                    refreshToken:newRefreshToken,
-                    accessToken:newAccessToken
-                })
-            )
-    } 
-    catch (error) 
-    {
-        next(error)
+    if (!refreshToken) {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        refreshToken = authHeader.split(' ')[1];
+      }
     }
-        
+    
+    if (!refreshToken) {
+      throw new ApiError(401, "No refresh token found");
+    }
+    
+    const decodedUser = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    if(!decodedUser)
+    {
+        res.clearCookie("accessToken", options);
+        res.clearCookie("refreshToken", options);
+        throw new ApiError(401, "Invalid request")
+    }
+    const user=await User.findById(decodedUser.userId)
+    if(!user)
+    {
+        throw new ApiError(400, "User not found")
+    }
+
+    if(user.refreshToken !== refreshToken)
+    {
+        res.clearCookie("accessToken", options);
+        res.clearCookie("refreshToken", options);
+        throw new ApiError(401, "Refresh token does not match");
+    }
+    const newRefreshToken = generateRefreshToken(user._id)
+    const newAccessToken = generateAccessToken(user._id)
 
 
+    if(!newRefreshToken || !newAccessToken)
+    {
+        throw new ApiError(500, "Error creating new tokens")
+    }
+    user.refreshToken=newRefreshToken
+    await user.save({validateBeforeSave:false})
 
+    return res.status(200)
+    .cookie("accessToken",newAccessToken,options)
+    .cookie("refreshToken",newRefreshToken,options)
+    .json(
+        new ApiSuccess(200,"Tokens refreshed successfully",
+        {
+            refreshToken:newRefreshToken,
+            accessToken:newAccessToken
+        })
+    )
+} 
+catch (error) 
+{
+    return next(error)
+}
 }
 
 export {registerUser,loginUser,logoutUser,refreshTokens}
