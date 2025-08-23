@@ -82,6 +82,7 @@ function App() {
       <Sidebar
         selectedUserId={selectedUser?.id}
         onSelectUser={setSelectedUser}
+        currentUser={currentUser}
       />
       <div className="flex flex-col flex-1">
         {selectedUser ? (

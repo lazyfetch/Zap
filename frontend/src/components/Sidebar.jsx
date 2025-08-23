@@ -1,14 +1,37 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { JoinRoom } from "../ClientSocket/ClientSocket";
 
-const users = [
-  { id: 1, name: "A", online: true },
-  { id: 2, name: "B", online: false },
-  { id: 3, name: "C", online: true },
-]; 
 
-export default function Sidebar({ selectedUserId, onSelectUser }) {
-  
+export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
+  // console.log("Sidebar currentUser:", currentUser) 
+
+  const [users, setUsers] = useState([]);
+  const getUsers = async () => {
+    // console.log("getUsers currentUser:", currentUser)
+    const accessToken = localStorage.getItem('accessToken');  
+    const response=await fetch('http://localhost:3000/api/v1/users/list',{
+      method:'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body:JSON.stringify({userId:currentUser._id}),
+      credentials:'include'
+    })
+    const data=await response.json()
+    if(data.success)
+    {
+      setUsers(data.data)
+    }
+    if (!data.success) 
+    {
+      throw new Error(data.message || "Failed to fetch users");
+    }
+  }
+  useEffect(()=>{
+    getUsers()
+  },[])
+
   return (
     <div className="w-64 bg-white border-r flex flex-col">
       <div className="p-4 font-bold text-xl border-b">Chats</div>
@@ -28,7 +51,7 @@ export default function Sidebar({ selectedUserId, onSelectUser }) {
                 user.online ? "bg-green-500" : "bg-gray-400"
               }`}
             ></span>
-            <span>{user.name}</span>
+            <span>{user.username}</span>
           </li>
         ))}
       </ul>
