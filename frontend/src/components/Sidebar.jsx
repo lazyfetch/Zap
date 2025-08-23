@@ -38,11 +38,12 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
       <ul className="flex-1 overflow-y-auto">
         {users.map((user) => (
           <li
-            key={user.id}
+            key={user._id}
             className={`flex items-center px-4 py-3 hover:bg-gray-100 cursor-pointer ${
               selectedUserId === user.id ? "bg-gray-200" : ""
             }`}
             onClick={() => {
+              console.log("Selected user:", user);
               onSelectUser(user)
             }}
           >
