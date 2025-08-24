@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { JoinRoom } from '../ClientSocket/ClientSocket';
 
 const Login = ({ onLoginSuccess, onShowRegister }) => {
   const [formData, setFormData] = useState({
@@ -40,9 +41,10 @@ const Login = ({ onLoginSuccess, onShowRegister }) => {
       }
       else
       {
-        localStorage.setItem('accessToken', data.data.accessToken);
-        localStorage.setItem('refreshToken', data.data.refreshToken);
-        onLoginSuccess(data.data.user);
+        localStorage.setItem('accessToken', data.data.accessToken)
+        localStorage.setItem('refreshToken', data.data.refreshToken)
+        JoinRoom(data.data.user._id);
+        onLoginSuccess(data.data.user)
       }
       
     } 

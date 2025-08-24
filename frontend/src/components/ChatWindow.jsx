@@ -13,8 +13,8 @@ export default function ChatWindow({ currentUser, selectedUser }) {
 
   const filteredMessages = messages.filter(
     (msg) =>
-      (msg.sender === currentUser.id && msg.receiver === selectedUser.id) ||
-      (msg.sender === selectedUser.id && msg.receiver === currentUser.id)
+      (msg.sender === currentUser._id && msg.receiver === selectedUser._id) ||
+      (msg.sender === selectedUser._id && msg.receiver === currentUser._id)
   );
 
   return (

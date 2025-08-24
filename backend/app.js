@@ -41,10 +41,10 @@ io.on('connection', (socket) => {
     socket.on('join room', (userId) => {
       socket.join(userId);
     });
-    socket.on('chat message', async (msgObj) => {
+    socket.on('chat message', (msgObj) => {
       io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
       console.log(msgObj)
-      await Message.create(msgObj)
+      // await Message.create(msgObj)
     });
     
 })
