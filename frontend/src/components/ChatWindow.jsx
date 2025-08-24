@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { EmitMessage } from "../ClientSocket/ClientSocket";
 import MessageBubble from "./MessageBubble";
+import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
 
 export default function ChatWindow({ currentUser, selectedUser }) {
   const [messages, setMessages] = useState([]);
   const bottomRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   const getMessages = async () => {
     const accessToken = localStorage.getItem("accessToken");
@@ -40,7 +42,9 @@ export default function ChatWindow({ currentUser, selectedUser }) {
 
   useEffect(() => {
     if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+      requestAnimationFrame(() => {
+        bottomRef.current.scrollIntoView({ behavior: "smooth" });
+      });
     }
   }, [messages]);
 
@@ -50,21 +54,74 @@ export default function ChatWindow({ currentUser, selectedUser }) {
       (msg.sender === selectedUser._id && msg.receiver === currentUser._id)
   );
 
+  const groupMessagesByDate = (messages) => {
+    const groups = {};
+
+    messages.forEach((msg) => {
+      const date = new Date(msg.createdAt || Date.now()).toLocaleDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(msg);
+    });
+
+    return groups;
+  };
+
+  const messageGroups = groupMessagesByDate(filteredMessages);
+
   return (
-    <div className="flex-1 p-6 overflow-y-auto flex flex-col">
-      <div className="mb-4 pb-2 border-b flex items-center">
-        <span className="font-bold text-lg">{selectedUser.username}</span>
+    <div className="flex-1 flex flex-col overflow-hidden bg-black">
+      <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+        <div className="flex items-center">
+          <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
+            {selectedUser.username.substring(0, 2).toUpperCase()}
+          </div>
+          <div className="ml-3">
+            <div className="font-medium">{selectedUser.username}</div>
+            <div className="text-xs text-gray-400">
+              <span className="inline-block h-2 w-2 rounded-full bg-green-500 mr-1"></span>
+              {selectedUser.online ? "Online" : "Offline"}
+            </div>
+          </div>
+        </div>
+        <div className="flex space-x-3">
+          <button className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors">
+            <FiPhone size={20} />
+          </button>
+          <button className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors">
+            <FiVideo size={20} />
+          </button>
+          <button className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-white transition-colors">
+            <FiMoreVertical size={20} />
+          </button>
+        </div>
       </div>
-      <div className="flex-1"></div>
-      <div className="space-y-4">
-        {filteredMessages.map((msg, index) => (
-          <MessageBubble
-            key={msg.id || index}
-            msg={msg.content}
-            self={msg.sender === currentUser._id}
-          />
+
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 p-4 overflow-y-auto bg-black custom-scrollbar"
+      >
+        {Object.entries(messageGroups).map(([date, msgs]) => (
+          <div key={date} className="mb-6">
+            <div className="flex justify-center mb-4">
+              <div className="bg-gray-900 text-gray-400 text-xs px-3 py-1 rounded-sm">
+                {date}
+              </div>
+            </div>
+            <div className="space-y-3">
+              {msgs.map((msg, index) => (
+                <MessageBubble
+                  key={msg._id || index}
+                  msg={msg.content}
+                  self={msg.sender === currentUser._id}
+                  timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                />
+              ))}
+            </div>
+          </div>
         ))}
-        <div ref={bottomRef} />
+        <div ref={bottomRef} className="h-1 bg-transparent" />
       </div>
     </div>
   );

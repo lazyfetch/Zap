@@ -5,6 +5,7 @@ import MessageInput from "./components/MessageInput";
 import Login from "./AuthComponents/Login";
 import Register from "./AuthComponents/Register"; 
 import { JoinRoom } from "./ClientSocket/ClientSocket";
+import { FiLogOut } from 'react-icons/fi';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -78,21 +79,40 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar
-        selectedUserId={selectedUser?.id}
-        onSelectUser={setSelectedUser}
-        currentUser={currentUser}
-      />
-      <div className="flex flex-col flex-1">
+    <div className="flex h-screen overflow-hidden bg-black text-gray-100">
+      <div className="flex flex-col w-72 bg-black border-r border-gray-800 overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+          <h1 className="text-xl font-bold text-amber-400">Zap Chat</h1>
+          <button 
+            onClick={() => {
+              localStorage.removeItem('accessToken');
+              localStorage.removeItem('refreshToken');
+              setCurrentUser(null);
+            }}
+            className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400"
+          >
+            <FiLogOut size={20} />
+          </button>
+        </div>
+        <Sidebar
+          selectedUserId={selectedUser?._id}
+          onSelectUser={setSelectedUser}
+          currentUser={currentUser}
+        />
+      </div>
+      <div className="flex flex-col flex-1 overflow-hidden bg-black">
         {selectedUser ? (
           <>
             <ChatWindow currentUser={currentUser} selectedUser={selectedUser} />
             <MessageInput selectedUser={selectedUser} currentUser={currentUser} />
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400">
-            Select a user to start chatting
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
+            <div className="w-24 h-24 rounded-full bg-gray-900 flex items-center justify-center mb-4">
+              <span className="text-3xl">👋</span>
+            </div>
+            <p className="text-xl">Select a conversation</p>
+            <p className="mt-2 text-sm">Choose a contact to start chatting</p>
           </div>
         )}
       </div>
