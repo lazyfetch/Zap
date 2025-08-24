@@ -41,6 +41,9 @@ const messageSchema= new Schema(
             ref: "Group", 
             default: null 
         },
+        tempId:{
+            type:String
+        }
     },
     {
         timestamps: true

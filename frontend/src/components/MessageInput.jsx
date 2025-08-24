@@ -8,7 +8,8 @@ export default function MessageInput({ selectedUser, currentUser }) {
   const handleSend = (e) => {
     e.preventDefault();
     if (message.trim() === "") return;
-    ClientSocket(message, currentUser._id, selectedUser._id);
+    let tempId=Date.now()+Math.random()
+    ClientSocket(message, currentUser._id, selectedUser._id,tempId);
     setMessage("");
   };
 

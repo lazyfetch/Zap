@@ -7,23 +7,30 @@ const JoinRoom = (userId) => {
     socket.emit('join room', userId);
 };
 
-const ClientSocket = (value, senderUserId,receiverUserId) => {
+const ClientSocket = (value, senderUserId,receiverUserId,tempId) => {
     socket.emit('chat message', {
         message:value,
         sender:senderUserId,
-        receiver:receiverUserId
+        receiver:receiverUserId,
+        tempId:tempId
     });
 }       
 
 const EmitMessage=(callback)=>{
     socket.off('chat message');
     socket.on('chat message', (msg) => {
-        console.log("Received on client:", msg);
         callback(msg)
   });
 }
 
-const SendMessage=()=>{
-
+const ChangeStatus=(callback)=>{
+    console.log("Setting up db saved listener");
+    socket.off('db saved');
+    socket.on('db saved',(msg)=>{
+        callback(msg)
+    })
 }
-export {ClientSocket,EmitMessage,JoinRoom}
+
+
+
+export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus}

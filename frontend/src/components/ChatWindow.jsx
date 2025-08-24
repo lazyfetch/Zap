@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { EmitMessage } from "../ClientSocket/ClientSocket";
+import { ChangeStatus, EmitMessage } from "../ClientSocket/ClientSocket";
 import MessageBubble from "./MessageBubble";
 import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
 
@@ -30,15 +30,44 @@ export default function ChatWindow({ currentUser, selectedUser }) {
     getMessages();
   }, [currentUser, selectedUser]);
 
+
+
+  useEffect(() => {
+    ChangeStatus((msg) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.tempId == msg.tempId) 
+          {
+            return { ...m, status: "sent"};
+          } 
+          else 
+          {
+            console.log("else case triggered")
+            return m;
+          }
+        })
+      );
+    });
+  }, []);
+
   useEffect(() => {
     EmitMessage((msg) => {
-      if (msg && msg.message) {
-        setMessages((prev) => [...prev, { content: msg.message, ...msg }]);
+      if (msg && msg.message) 
+      {
+        setMessages((prev) => [
+          ...prev, 
+          { 
+            content: msg.message, 
+            tempId: msg.tempId, 
+            status: msg.sender === currentUser._id ? "not_delivered" : undefined,
+            ...msg 
+          }
+        ]);
       } else if (typeof msg === "string") {
         setMessages((prev) => [...prev, { content: msg }]);
       }
     });
-  }, []);
+  }, [currentUser._id]); 
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -116,6 +145,7 @@ export default function ChatWindow({ currentUser, selectedUser }) {
                   msg={msg.content}
                   self={msg.sender === currentUser._id}
                   timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  status={msg.status}
                 />
               ))}
             </div>

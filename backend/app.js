@@ -38,19 +38,27 @@ app.use((req, res, next) => {
 
 
 io.on('connection', (socket) => {
-    socket.on('join room', (userId) => {
-      socket.join(userId);
+  socket.on('join room', (userId) => {
+    socket.join(userId);
+  });
+
+  socket.on('chat message', async (msgObj) => {
+    io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
+
+    const savedMsg = await Message.create({
+      content: msgObj.message,
+      sender: msgObj.sender,
+      receiver: msgObj.receiver,
+      status: "sent",
+      tempId: msgObj.tempId
     });
-    socket.on('chat message', async (msgObj) => {
-      io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
-      await Message.create({
-        content: msgObj.message,
-        sender: msgObj.sender,
-        receiver: msgObj.receiver
-      });
-      console.log(msgObj)
-    });
+
+    const savedMsgObject = savedMsg.toObject ? savedMsg.toObject() : savedMsg;
     
+    setTimeout(() => {
+      io.to(msgObj.receiver).to(msgObj.sender).emit('db saved', savedMsgObject);
+    }, 1000);
+  });
 })
 
 
