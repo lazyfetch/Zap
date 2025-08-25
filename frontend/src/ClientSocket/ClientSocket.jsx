@@ -31,6 +31,30 @@ const ChangeStatus=(callback)=>{
     })
 }
 
+const TypingStarted = (senderUserId, receiverUserId) => {
+    socket.emit('typing', { sender: senderUserId, receiver: receiverUserId });
+    console.log("1st part done")
+}
+
+const TypingIndicator = (callback) => {
+    socket.off('typing')
+    socket.on('typing', (data) => {
+        callback(data)
+    })
+}
+
+const TypingStopped = (senderUserId, receiverUserId) => {
+    socket.emit('stop typing', { sender: senderUserId, receiver: receiverUserId });
+    console.log("2nd part done")
+}
+
+const StopTypingIndicator = (callback) => {
+    socket.off('stop typing')
+    socket.on('stop typing', (data) => {
+        callback(data)
+    })
+}
 
 
-export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus}
+
+export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator}

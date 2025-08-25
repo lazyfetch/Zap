@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { ChangeStatus, EmitMessage } from "../ClientSocket/ClientSocket";
+import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator } from "../ClientSocket/ClientSocket";
 import MessageBubble from "./MessageBubble";
+import TypingBubble from "./TypingBubble";
 import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
 
 export default function ChatWindow({ currentUser, selectedUser }) {
   const [messages, setMessages] = useState([]);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
 
   const getMessages = async () => {
     const accessToken = localStorage.getItem("accessToken");
@@ -70,12 +72,49 @@ export default function ChatWindow({ currentUser, selectedUser }) {
   }, [currentUser._id]); 
 
   useEffect(() => {
+  TypingIndicator(({ sender }) => 
+  {
+    if (sender === selectedUser._id) 
+    {
+       setIsOtherUserTyping(true)
+    }
+  })
+  StopTypingIndicator(({ sender }) => {
+    if (sender === selectedUser._id) 
+    {
+      setIsOtherUserTyping(false);
+    }
+  });
+  }, [selectedUser._id]);
+
+  useEffect(() => {
     if (bottomRef.current) {
       requestAnimationFrame(() => {
         bottomRef.current.scrollIntoView({ behavior: "smooth" });
       });
     }
-  }, [messages]);
+  }, [messages])
+
+    useEffect(() => {
+    if (isOtherUserTyping) 
+    {
+      if (bottomRef.current) 
+      {
+        bottomRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    } 
+    else 
+    {
+      if (messagesContainerRef.current) 
+      {
+        const messageDivs = messagesContainerRef.current.querySelectorAll(".message-bubble");
+        if (messageDivs.length > 0) 
+        {
+          messageDivs[messageDivs.length - 1].scrollIntoView({ behavior: "smooth" });
+        }
+      }
+    }
+  }, [isOtherUserTyping]);
 
   const filteredMessages = messages.filter(
     (msg) =>
@@ -94,8 +133,8 @@ export default function ChatWindow({ currentUser, selectedUser }) {
       groups[date].push(msg);
     });
 
-    return groups;
-  };
+    return groups
+  }
 
   const messageGroups = groupMessagesByDate(filteredMessages);
 
@@ -146,11 +185,13 @@ export default function ChatWindow({ currentUser, selectedUser }) {
                   self={msg.sender === currentUser._id}
                   timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   status={msg.status}
+                  className="message-bubble"
                 />
               ))}
             </div>
           </div>
         ))}
+        {isOtherUserTyping && <TypingBubble />}
         <div ref={bottomRef} className="h-1 bg-transparent" />
       </div>
     </div>

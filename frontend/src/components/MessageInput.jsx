@@ -1,16 +1,19 @@
-import { useState } from "react";
-import { ClientSocket } from "../ClientSocket/ClientSocket.jsx";
+import { useState, useRef } from "react";
+import { ClientSocket, TypingStarted, TypingStopped } from "../ClientSocket/ClientSocket.jsx";
 import { FiSend, FiSmile, FiPaperclip, FiMic } from "react-icons/fi";
 
 export default function MessageInput({ selectedUser, currentUser }) {
   const [message, setMessage] = useState("");
+  const inputRef = useRef(null);
 
   const handleSend = (e) => {
     e.preventDefault();
     if (message.trim() === "") return;
-    let tempId=Date.now()+Math.random()
-    ClientSocket(message, currentUser._id, selectedUser._id,tempId);
+    let tempId = Date.now() + Math.random();
+    ClientSocket(message, currentUser._id, selectedUser._id, tempId);
+    TypingStopped(currentUser._id, selectedUser._id);
     setMessage("");
+    if (inputRef.current) inputRef.current.blur()
   };
 
   return (
@@ -30,11 +33,14 @@ export default function MessageInput({ selectedUser, currentUser }) {
         </button>
 
         <input
+          ref={inputRef}
           type="text"
           className="flex-1 bg-black border border-gray-800 rounded-md px-4 py-2 text-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-700"
           placeholder="Type your message..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
+          onFocus={() => TypingStarted(currentUser._id, selectedUser._id)}
+          onBlur={() => TypingStopped(currentUser._id, selectedUser._id)}
         />
 
         <button

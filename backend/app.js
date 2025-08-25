@@ -40,7 +40,14 @@ app.use((req, res, next) => {
 io.on('connection', (socket) => {
   socket.on('join room', (userId) => {
     socket.join(userId);
-  });
+  })
+  socket.on('typing', ({sender,receiver}) => {
+    io.to(receiver).emit('typing',{sender,receiver})
+  })
+
+  socket.on('stop typing', ({ sender, receiver }) => {
+    io.to(receiver).emit('stop typing', { sender });
+  })
 
   socket.on('chat message', async (msgObj) => {
     io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
