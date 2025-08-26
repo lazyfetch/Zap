@@ -57,6 +57,14 @@ io.on('connection', (socket) => {
     io.to(receiver).emit('offer',{offer})
   })
 
+  socket.on('answer',({answer,receiver})=>{
+    io.to(receiver).emit('answer',{answer})
+  })
+
+  socket.on('ice candidate',({candidate,receiver})=>{
+    io.to(receiver).emit('ice candidate',{candidate})
+  })
+
   socket.on('chat message', async (msgObj) => {
     io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
 

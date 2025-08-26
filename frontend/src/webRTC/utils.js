@@ -22,11 +22,42 @@ const receiveSDPOffer=(receiverUserId)=>{
         const answer= await peerConnection.createAnswer()
         await peerConnection.setLocalDescription(answer)
 
-        socket.emit('answer',{answer,receiver:receiverUserId})
+        socket.emit('answer',{answer:answer,receiver:receiverUserId})
     })
 }
 
+const receiveAnswer=()=>{
+  socket.off('answer')
+  socket.on('answer',async (answer)=>{
+      const peerConnection=getPeerConnection()
+      await peerConnection.setRemoteDescription(answer.answer)
+  })
+}
 
+const sendICECandidates=(receiverUserId)=>{
+  const peerConnection=getPeerConnection()
+  peerConnection.onicecandidate=(event)=>{
+    socket.emit('ice candidate',{candidate:event.candidate,receiver:receiverUserId})
+  }
+}
 
+const receiveICECandidates=()=>{
+  socket.off('ice candidate')
+  socket.on('ice candidate', async({candidate})=>{
+    if(!candidate)
+    {
+      return
+    }
+    const peerConnection=getPeerConnection()
+    try 
+    {
+      await peerConnection.addIceCandidate(candidate)
+    } 
+    catch (error) 
+    {
+      console.error("Error adding received ICE candidate", error)
+    }
+  })
+}
 
-export { sendPeerConnection,receiveSDPOffer }
+export { sendPeerConnection,receiveSDPOffer,receiveAnswer,sendICECandidates,receiveICECandidates }
