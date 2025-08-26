@@ -2,16 +2,24 @@ import socket from "../socket.js";
 import { getPeerConnection } from "./peerConnectionStore.js";
 import { createSDPOffer, getLocalStream } from "./webrtcClient.js";
 
-const sendPeerConnection = async (receiverUserId) => {
+const sendSDPOffer = async (receiverUserId,remoteVideoRef) => {
   const peerConnection = getPeerConnection()
+  peerConnection.ontrack = (event) => {
+    const remoteStream = event.streams[0];
+    remoteVideoRef.current.srcObject = remoteStream;
+  }
   const offer = await createSDPOffer(peerConnection)
-  socket.emit('offer', {offer:offer,receiver:receiverUserId})
+  socket.emit('offer', { offer: offer, receiver: receiverUserId })
 };
 
-const receiveSDPOffer=(receiverUserId)=>{
+const receiveSDPOffer=(receiverUserId,remoteVideoRef)=>{
     socket.off('offer');
     socket.on('offer',async (offer)=>{
         const peerConnection= new RTCPeerConnection()
+        peerConnection.ontrack = (event) => {
+          const remoteStream = event.streams[0];
+          remoteVideoRef.current.srcObject = remoteStream;
+        };
         await peerConnection.setRemoteDescription(offer.offer)
         const stream=await getLocalStream()
         for (const track of stream.getTracks()) 
@@ -60,4 +68,4 @@ const receiveICECandidates=()=>{
   })
 }
 
-export { sendPeerConnection,receiveSDPOffer,receiveAnswer,sendICECandidates,receiveICECandidates }
+export { sendSDPOffer,receiveSDPOffer,receiveAnswer,sendICECandidates,receiveICECandidates }
