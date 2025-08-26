@@ -3,12 +3,14 @@ import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator } from "
 import MessageBubble from "./MessageBubble";
 import TypingBubble from "./TypingBubble";
 import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
+import VideoCall from "./VideoCall";
 
 export default function ChatWindow({ currentUser, selectedUser }) {
   const [messages, setMessages] = useState([]);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+  const [showVideoCall, setShowVideoCall] = useState(false);
 
   const getMessages = async () => {
     const accessToken = localStorage.getItem("accessToken");
@@ -44,7 +46,6 @@ export default function ChatWindow({ currentUser, selectedUser }) {
           } 
           else 
           {
-            console.log("else case triggered")
             return m;
           }
         })
@@ -157,7 +158,10 @@ export default function ChatWindow({ currentUser, selectedUser }) {
           <button className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors">
             <FiPhone size={20} />
           </button>
-          <button className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors">
+          <button
+            className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors"
+            onClick={() => setShowVideoCall(true)}
+          >
             <FiVideo size={20} />
           </button>
           <button className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-white transition-colors">
@@ -194,6 +198,9 @@ export default function ChatWindow({ currentUser, selectedUser }) {
         {isOtherUserTyping && <TypingBubble />}
         <div ref={bottomRef} className="h-1 bg-transparent" />
       </div>
+      {showVideoCall && (
+        <VideoCall onHangUp={() => setShowVideoCall(false)} />
+      )}
     </div>
   );
 }

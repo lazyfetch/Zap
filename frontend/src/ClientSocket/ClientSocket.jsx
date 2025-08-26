@@ -1,7 +1,4 @@
-import { io } from "socket.io-client";
-const socketServerUrl = import.meta.env.VITE_SOCKET_SERVER_URL;
-
-const socket=io(socketServerUrl)
+import socket from "../socket.js";
 
 const JoinRoom = (userId) => {
     socket.emit('join room', userId);
@@ -33,7 +30,6 @@ const ChangeStatus=(callback)=>{
 
 const TypingStarted = (senderUserId, receiverUserId) => {
     socket.emit('typing', { sender: senderUserId, receiver: receiverUserId });
-    console.log("1st part done")
 }
 
 const TypingIndicator = (callback) => {
@@ -45,7 +41,6 @@ const TypingIndicator = (callback) => {
 
 const TypingStopped = (senderUserId, receiverUserId) => {
     socket.emit('stop typing', { sender: senderUserId, receiver: receiverUserId });
-    console.log("2nd part done")
 }
 
 const StopTypingIndicator = (callback) => {
@@ -55,6 +50,16 @@ const StopTypingIndicator = (callback) => {
     })
 }
 
+const MessageRead=(senderUserId, receiverUserId)=>{
+    socket.emit('read',{sender:senderUserId,receiver:receiverUserId})
+}
+
+const MessageReadIndicator=(callback)=>{
+    socket.off('read')
+    socket.on('read',(data)=>{
+        callback(data)
+    })
+}
 
 
-export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator}
+export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator}

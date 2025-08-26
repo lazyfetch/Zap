@@ -49,6 +49,14 @@ io.on('connection', (socket) => {
     io.to(receiver).emit('stop typing', { sender });
   })
 
+  socket.on('read', ({ sender, receiver }) => {
+    io.to(receiver).emit('read', { sender });
+  })
+
+  socket.on('offer',({offer,receiver})=>{
+    io.to(receiver).emit('offer',{offer})
+  })
+
   socket.on('chat message', async (msgObj) => {
     io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
 
