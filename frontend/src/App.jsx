@@ -1,4 +1,4 @@
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
@@ -11,6 +11,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false); 
+
   const checkAuth=async()=>{
       try {
         const accessToken = localStorage.getItem('accessToken');

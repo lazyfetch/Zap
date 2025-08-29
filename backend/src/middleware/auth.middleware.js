@@ -2,10 +2,15 @@ import { User } from "../models/user.model.js"
 import ApiError from "../utils/ApiError.js"
 import jwt from "jsonwebtoken";
 
+const USE_COOKIES = process.env.USE_COOKIES === "true";
+
 const verifyLogin = async(req, res, next) => {
   try {
-    let accessToken = req.cookies?.accessToken;
-    
+    let accessToken;
+    if (USE_COOKIES) 
+    {
+      accessToken = req.cookies?.accessToken;
+    }
     if (!accessToken) {
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {

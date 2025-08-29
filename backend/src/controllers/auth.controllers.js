@@ -26,6 +26,7 @@ const generateRefreshToken = (userId) => {
     });
 }
 
+const USE_COOKIES = process.env.USE_COOKIES === "true";
 
 const registerUser = async(req,res,next)=>
 {
@@ -107,20 +108,37 @@ const loginUser=async(req,res,next)=>{
         delete userObj.password
         delete userObj.refreshToken
     
-        return res.status(200).cookie("accessToken",AccessToken,options)
-        .cookie("refreshToken",RefreshToken,options)
-        .json(
-            new ApiSuccess(
+        if (USE_COOKIES) 
+        {
+            return res.status(200)
+                .cookie("accessToken", AccessToken, options)
+                .cookie("refreshToken", RefreshToken, options)
+                .json(
+                new ApiSuccess(
+                    200,
+                    "User Logged in successfully",
+                    {
+                    user: userObj,
+                    refreshToken: RefreshToken,
+                    accessToken: AccessToken
+                    }
+                )
+                );
+        } 
+        else 
+        {
+            return res.status(200).json(
+                new ApiSuccess(
                 200,
                 "User Logged in successfully",
                 {
-                    user:userObj,
-                    refreshToken:RefreshToken,
-                    accessToken:AccessToken
+                    user: userObj,
+                    refreshToken: RefreshToken,
+                    accessToken: AccessToken
                 }
-                
-            )
-        )
+                )
+            );
+        }
     } 
     catch (error) 
     {
@@ -191,16 +209,27 @@ const refreshTokens = async(req, res, next) => {
     user.refreshToken=newRefreshToken
     await user.save({validateBeforeSave:false})
 
-    return res.status(200)
-    .cookie("accessToken",newAccessToken,options)
-    .cookie("refreshToken",newRefreshToken,options)
-    .json(
-        new ApiSuccess(200,"Tokens refreshed successfully",
-        {
-            refreshToken:newRefreshToken,
-            accessToken:newAccessToken
-        })
-    )
+    if (USE_COOKIES) 
+    {
+        return res.status(200)
+            .cookie("accessToken", newAccessToken, options)
+            .cookie("refreshToken", newRefreshToken, options)
+            .json(
+            new ApiSuccess(200, "Tokens refreshed successfully", {
+                refreshToken: newRefreshToken,
+                accessToken: newAccessToken
+            })
+            );
+    } 
+    else 
+    {
+        return res.status(200).json(
+            new ApiSuccess(200, "Tokens refreshed successfully", {
+            refreshToken: newRefreshToken,
+            accessToken: newAccessToken
+    })
+  );
+}
 } 
 catch (error) 
 {

@@ -7,7 +7,7 @@ import cookieParser from "cookie-parser";
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import { Message } from "./src/models/message.model.js";
-
+const USE_COOKIES = process.env.USE_COOKIES === "true";
 
 const app = express();
 const server = createServer(app);
@@ -22,7 +22,7 @@ const io = new Server(server,{
 console.log(process.env.CORS_ORIGIN)
 app.use(cors({
   origin: process.env.CORS_ORIGIN,
-  credentials: true,
+  credentials: USE_COOKIES, // only true if using cookies
 }));
 
 app.use(express.json({ limit: "16kb" }));
@@ -53,17 +53,35 @@ io.on('connection', (socket) => {
     io.to(receiver).emit('read', { sender });
   })
 
-  socket.on('offer',({offer,receiver})=>{
-    io.to(receiver).emit('offer',{offer})
+  socket.on('start call', ({ sender, receiver }) => {
+    io.to(receiver._id).emit('start call', { sender })
+    console.log("Data transmitted")
   })
 
-  socket.on('answer',({answer,receiver})=>{
-    io.to(receiver).emit('answer',{answer})
+  socket.on('offer', ({ offer, sender, receiver }) => {
+    io.to(receiver._id).emit('offer', { offer, sender })
+    console.log("Offer relayed")
   })
 
-  socket.on('ice candidate',({candidate,receiver})=>{
-    io.to(receiver).emit('ice candidate',{candidate})
+  socket.on('answer', ({ answer, sender, receiver }) => {
+    io.to(receiver._id).emit('answer', { answer, sender })
+    console.log("Answer relayed")
   })
+
+  socket.on('ice', ({ candidate, sender, receiver }) => {
+    io.to(receiver._id).emit('ice', { candidate, sender });
+    console.log("ICE relayed");
+  });
+
+  socket.on('end call', ({ sender, receiver }) => {
+    io.to(receiver._id).emit('end call', { sender });
+    console.log("End call relayed");
+  });
+
+  socket.on('reject call', ({ sender, receiver }) => {
+    io.to(receiver._id).emit('reject call', { sender });
+    console.log("Reject call relayed");
+  });
 
   socket.on('chat message', async (msgObj) => {
     io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
@@ -99,5 +117,7 @@ app.use((err, req, res, next) => {
     details: err.details || null
   });
 });
+
+
 
 export { app , server};

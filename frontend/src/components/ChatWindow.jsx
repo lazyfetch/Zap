@@ -1,16 +1,63 @@
 import { useEffect, useRef, useState } from "react";
-import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator } from "../ClientSocket/ClientSocket";
-import MessageBubble from "./MessageBubble";
-import TypingBubble from "./TypingBubble";
+import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator } from "../ClientSocket/ClientSocket.jsx";
+import MessageBubble from "./MessageBubble.jsx";
+import TypingBubble from "./TypingBubble.jsx";
 import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
-import VideoCall from "./VideoCall";
+import VideoCall from "./VideoCall.jsx";
+import { StartCall, ReceiveCall, receiveEndCall, sendEndCall } from "../webRTC/webRTCSockets.js"; 
+import IncomingCallModal from "./IncomingCallModal.jsx";
+import socket from "../socket.js";
 
 export default function ChatWindow({ currentUser, selectedUser }) {
   const [messages, setMessages] = useState([]);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
-  const [showVideoCall, setShowVideoCall] = useState(false);
+  const [showIncomingCallModal, setShowIncomingCallModal] = useState(false);
+  const [incomingCallData, setIncomingCallData] = useState(null);
+  const [isVideoCallVisible, setIsVideoCallVisible] = useState(false); 
+  const [isCaller, setIsCaller] = useState(false);
+
+  const handleAccept = () => {
+    setShowIncomingCallModal(false);
+  };
+
+  const handleReject = () => {
+    setShowIncomingCallModal(false);
+    setIsVideoCallVisible(false);
+  };
+
+  useEffect(() => {
+    const onEndCall = () => {
+      setIsVideoCallVisible(false);
+      
+      const videoElements = document.querySelectorAll('video');
+      videoElements.forEach(video => {
+        if (video.srcObject) {
+          const stream = video.srcObject;
+          stream.getTracks().forEach(track => {
+            track.stop();
+          });
+          video.srcObject = null;
+        }
+      });
+    };
+    receiveEndCall(onEndCall);
+    
+    return () => {
+      socket.off('end call');
+    };
+  }, []);
+
+  useEffect(() => {
+  const onCall = (data) => {
+    setIncomingCallData(data);
+    setShowIncomingCallModal(true);
+    setIsCaller(false);
+    setIsVideoCallVisible(true);
+  };
+  ReceiveCall(onCall);
+}, []);
 
   const getMessages = async () => {
     const accessToken = localStorage.getItem("accessToken");
@@ -160,7 +207,11 @@ export default function ChatWindow({ currentUser, selectedUser }) {
           </button>
           <button
             className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors"
-            onClick={() => setShowVideoCall(true)}
+            onClick={() => {
+              StartCall(currentUser, selectedUser);
+              setIsCaller(true);
+              setIsVideoCallVisible(true);
+            }}
           >
             <FiVideo size={20} />
           </button>
@@ -198,9 +249,22 @@ export default function ChatWindow({ currentUser, selectedUser }) {
         {isOtherUserTyping && <TypingBubble />}
         <div ref={bottomRef} className="h-1 bg-transparent" />
       </div>
-      {showVideoCall && (
-        <VideoCall onHangUp={() => setShowVideoCall(false)} />
-      )}
+      {isVideoCallVisible && 
+      <VideoCall 
+        isCaller={isCaller} 
+        currentUser={currentUser} 
+        selectedUser={selectedUser} 
+        onClose={() => {
+          setIsVideoCallVisible(false);
+          sendEndCall(currentUser, selectedUser);
+        }} 
+      />}
+      <IncomingCallModal
+        show={showIncomingCallModal}
+        onAccept={handleAccept}
+        onReject={handleReject}
+        caller={incomingCallData?.sender}
+      />
     </div>
   );
 }
