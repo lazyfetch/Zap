@@ -4,7 +4,7 @@ import MessageBubble from "./MessageBubble.jsx";
 import TypingBubble from "./TypingBubble.jsx";
 import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
 import VideoCall from "./VideoCall.jsx";
-import { StartCall, ReceiveCall, receiveEndCall, sendEndCall } from "../webRTC/webRTCSockets.js"; 
+import { StartCall, ReceiveCall, receiveEndCall, sendEndCall,sendRejectCall } from "../webRTC/webRTCSockets.js"; 
 import IncomingCallModal from "./IncomingCallModal.jsx";
 import socket from "../socket.js";
 
@@ -25,6 +25,7 @@ export default function ChatWindow({ currentUser, selectedUser }) {
   const handleReject = () => {
     setShowIncomingCallModal(false);
     setIsVideoCallVisible(false);
+    sendRejectCall(currentUser, selectedUser);
   };
 
   useEffect(() => {

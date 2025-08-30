@@ -4,7 +4,7 @@ import LoadingScreen from "./LoadingScreen.jsx";
 import { sendOffer, receiveOffer, sendAnswer, receiveAnswer, sendIce, receiveIce, sendEndCall} from "../webRTC/webRTCSockets.js";
 import socket from "../socket.js";
 
-const VideoCall = ({ isCaller, currentUser, selectedUser, onClose }) => {
+const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);
@@ -12,8 +12,37 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [callDuration, setCallDuration] = useState(0)
+  const timerRef = useRef(null)
 
   const iceQueueRef = useRef({});
+  const startTimer = () =>
+  {
+    if (timerRef.current)
+    {
+      return
+    }
+    timerRef.current = setInterval(() =>
+    {
+      setCallDuration((prev) => prev + 1);
+    }, 1000);
+  };
+
+  const stopTimer = () =>
+  {
+    if (timerRef.current)
+    {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const formatDuration = (seconds) =>
+  {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const createPeerConnection = () => {
     if (pcRef.current && pcRef.current.connectionState !== "closed") {
@@ -162,6 +191,7 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose }) => {
     console.log("cleanupCall");
     try 
     {
+      stopTimer()
       if (localStreamRef.current) 
       {
         localStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -299,6 +329,15 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose }) => {
             onClose()
           }
         });
+        socket.on("reject call", (data) =>
+        {
+          console.log("reject call received", data);
+          cleanupCall();
+          if (onClose)
+          {
+            onClose();
+          }
+        });
         if (isCaller) 
         {
          try 
@@ -340,9 +379,10 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose }) => {
           {
             clearInterval(interval);
           }
-        }, 300);
+        }, 1000)
 
         setLoading(false);
+        startTimer()
         console.log("initialisation completed");
       } 
       catch (error) 
@@ -413,6 +453,9 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose }) => {
       {loading && <LoadingScreen message="Initializing call..." />}
       {!loading && (
         <>
+          <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded">
+            Call duration: {formatDuration(callDuration)}
+          </div>
           <video
             ref={remoteVideoRef}
             autoPlay
