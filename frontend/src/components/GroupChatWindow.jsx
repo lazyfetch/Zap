@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble.jsx";
 import { FiUsers } from "react-icons/fi";
+import { JoinGroupRoom, OnGroupMessage} from "../ClientSocket/ClientSocket.jsx";
 
 export default function GroupChatWindow({ currentUser, selectedGroup, refreshKey }) {
   const [messages, setMessages] = useState([]);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
+
+  const JoinRoom=()=>{
+    JoinGroupRoom(selectedGroup._id)
+  }
+  useEffect(()=>{
+    JoinRoom()
+  },[])
   useEffect(() => {
     const getGroupMessages = async () => {
       const accessToken = localStorage.getItem("accessToken");
@@ -29,9 +37,18 @@ export default function GroupChatWindow({ currentUser, selectedGroup, refreshKey
         setMessages([])
       }
     };
-    getGroupMessages();
-    console.log(messages)
+    getGroupMessages()
+
   }, [selectedGroup, refreshKey]);
+
+  useEffect(() => {
+    const handleGroupMessage = (msg) => {
+      setMessages((prev) => [...prev, msg]);
+    };
+    OnGroupMessage(handleGroupMessage);
+
+  },
+  [selectedGroup._id]);
 
   useEffect(() => {
     requestAnimationFrame(() => {

@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { FiSend, FiSmile, FiPaperclip, FiMic } from "react-icons/fi";
+import { SendGroupMessage } from "../ClientSocket/ClientSocket.jsx";
 
 export default function GroupMessageInput({ selectedGroup, currentUser, onMessageSent }) {
   const [message, setMessage] = useState("");
@@ -21,6 +22,13 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
         group: selectedGroup
       }),
     })
+    SendGroupMessage({
+      groupId: selectedGroup._id,
+      content: message,
+      sender: currentUser._id,
+      createdAt: new Date().toISOString(),
+      status: "sent"
+    });
     setMessage("")
     if (inputRef.current)
     {

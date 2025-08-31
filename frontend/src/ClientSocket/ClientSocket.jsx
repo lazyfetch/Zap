@@ -61,5 +61,19 @@ const MessageReadIndicator=(callback)=>{
     })
 }
 
+const JoinGroupRoom = (groupId) => {
+    socket.emit('join group room', groupId)
+};
 
-export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator}
+const SendGroupMessage = (messageObj) => {
+    socket.emit('group message', messageObj)
+};
+
+const OnGroupMessage = (callback) => {
+    socket.off('group message')
+    socket.on('group message', (msg) => {
+        callback(msg)
+    });
+};
+
+export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator,JoinGroupRoom,SendGroupMessage,OnGroupMessage}

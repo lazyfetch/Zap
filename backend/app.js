@@ -100,6 +100,14 @@ io.on('connection', (socket) => {
       io.to(msgObj.receiver).to(msgObj.sender).emit('db saved', savedMsgObject);
     }, 1000);
   });
+
+  socket.on('join group room', (groupId) => {
+    socket.join(groupId)
+  })
+
+  socket.on('group message', async (msgObj) => {
+    io.to(msgObj.groupId).emit('group message', msgObj)
+  })
 })
 
 
