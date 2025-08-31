@@ -6,12 +6,16 @@ import Login from "./AuthComponents/Login";
 import Register from "./AuthComponents/Register"; 
 import { JoinRoom } from "./ClientSocket/ClientSocket";
 import { FiLogOut } from 'react-icons/fi';
+import GroupChatWindow from "./components/GroupChatWindow";
+import GroupMessageInput from "./components/GroupMessageInput";
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [showRegister, setShowRegister] = useState(false); 
   const [sidebarWidth, setSidebarWidth] = useState(288); 
+  const [groupMessagesRefreshKey, setGroupMessagesRefreshKey] = useState(0);
   const sidebarMin = 275;
   const sidebarMax = 500;
   const resizing = useRef(false);
@@ -129,6 +133,7 @@ function App() {
           selectedUserId={selectedUser?._id}
           onSelectUser={setSelectedUser}
           currentUser={currentUser}
+          setSelectedGroup={setSelectedGroup}
         />
       </div>
 
@@ -146,8 +151,21 @@ function App() {
       <div className="flex flex-col flex-1 overflow-hidden bg-black">
         {selectedUser ? (
           <>
-            <ChatWindow currentUser={currentUser} selectedUser={selectedUser} />
-            <MessageInput selectedUser={selectedUser} currentUser={currentUser} />
+            <ChatWindow currentUser={currentUser} selectedUser={selectedUser} setSelectedGroup={setSelectedGroup} />
+            <MessageInput selectedUser={selectedUser} currentUser={currentUser} setSelectedGroup={setSelectedGroup} />
+          </>
+        ) : selectedGroup ? (
+          <>
+            <GroupChatWindow
+              currentUser={currentUser}
+              selectedGroup={selectedGroup}
+              refreshKey={groupMessagesRefreshKey}
+            />
+            <GroupMessageInput
+              selectedGroup={selectedGroup}
+              currentUser={currentUser}
+              onMessageSent={() => setGroupMessagesRefreshKey(k => k + 1)}
+            />
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500">

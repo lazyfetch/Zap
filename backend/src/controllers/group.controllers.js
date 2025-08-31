@@ -1,7 +1,9 @@
 import { Group } from "../models/group.model.js";
 import { User } from "../models/user.model.js";
+import { Message } from "../models/message.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiSuccess from "../utils/ApiSuccess.js";
+import mongoose from "mongoose";
 
 const createGroup = async (req, res) => {
     try 
@@ -327,4 +329,117 @@ const getUserGroups = async (req, res) => {
     }
 };
 
-export { createGroup, addMember, removeMember, deleteGroup, getGroup, updateGroup, leaveGroup, getUserGroups }
+const createGroupMessage = async (req, res, next) => {
+    try 
+    {
+        const { content, group } = req.body
+        const userId = req.user._id
+
+        if (!content || !group || !group._id)
+        {
+            throw new ApiError(400, "Content and group are required")
+        }
+
+        const groupDoc = await Group.findById(group._id)
+        if (!groupDoc)
+        {
+            throw new ApiError(404, "Group not found")
+        }
+            
+        if (!groupDoc.members.includes(userId))
+        {
+            throw new ApiError(403, "Not a member of this group")
+        }
+
+        const message = new Message({
+            sender: userId,
+            receiver: null, 
+            content: content,
+            roomId: group._id
+        });
+
+        await message.save()
+
+        return res.status(201).json(
+            new ApiSuccess(201, { message }, "Group message sent")
+        );
+    } 
+    catch (error) 
+    {
+        return next(error);
+    }
+}
+
+const getGroupMessages = async (req, res, next) => {
+    try {
+        const { groupId } = req.body;
+        const userId = req.user._id;
+
+        console.log("Requested groupId:", groupId);
+
+        const group = await Group.findById(groupId);
+        if (!group) {
+            console.log("Group not found for groupId:", groupId);
+            throw new ApiError(404, "Group not found");
+        }
+        if (!group.members.includes(userId)) {
+            console.log("User not a member:", userId, "Group members:", group.members);
+            throw new ApiError(403, "Not a member of this group");
+        }
+
+        // Log the query and result
+        const queryRoomId = new mongoose.Types.ObjectId(groupId);
+        console.log("Querying messages with roomId:", queryRoomId);
+
+        const messages = await Message.find({ roomId: queryRoomId }).sort({ createdAt: 1 });
+
+        console.log("Messages found:", messages);
+
+        return res.status(200).json(
+            new ApiSuccess(200,"Group messages fetched successfully",{ messages })
+        )
+    } catch (error) {
+        return next(error);
+    }
+};
+
+const deleteGroupMessage = async (req, res, next) => {
+    try 
+    {
+        const { messageId, groupId } = req.body
+        const userId = req.user._id
+
+        const message = await Message.findById(messageId)
+        const group = await Group.findById(groupId)
+
+        if (!group) 
+        {
+            throw new ApiError(404, "Group not found")
+        }
+        if (!group.members.includes(userId)) 
+        {
+            throw new ApiError(403, "Not a member of this group")
+        }
+        if (!message)
+        {
+            throw new ApiError(404, "Message not found")
+        }
+
+        if (message.sender.toString() !== userId.toString()) 
+        {
+            throw new ApiError(403, "Not authorized to delete this message");
+        }
+
+        await Message.deleteOne({ _id: messageId });
+
+        return res.status(200).json(
+            new ApiSuccess(200, {}, "Group message deleted successfully")
+        );
+    } 
+    catch (error) 
+    {
+        return next(error);
+    }
+};
+
+export { createGroup, addMember, removeMember, deleteGroup, getGroup, updateGroup, leaveGroup, getUserGroups, createGroupMessage,getGroupMessages,deleteGroupMessage }

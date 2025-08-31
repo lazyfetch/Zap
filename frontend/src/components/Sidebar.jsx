@@ -3,7 +3,7 @@ import { JoinRoom } from "../ClientSocket/ClientSocket";
 import { FiSearch, FiSettings, FiUsers, FiPlus } from "react-icons/fi"
 import CreateGroupModal from "./CreateGroupModal.jsx"
 
-export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
+export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setSelectedGroup }) {
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]); 
   const [searchTerm, setSearchTerm] = useState("");
@@ -117,7 +117,10 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
               className={`flex items-center px-4 py-3 hover:bg-gray-900 cursor-pointer transition-all ${
                 selectedUserId === user._id ? "bg-gray-900" : ""
               }`}
-              onClick={() => onSelectUser(user)}
+              onClick={() => {
+                onSelectUser(user)
+                setSelectedGroup(null)
+              }}
             >
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
@@ -157,7 +160,10 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
               <li
                 key={group._id}
                 className="flex items-center px-4 py-3 hover:bg-gray-900 cursor-pointer transition-all"
-                onClick={() => onSelectUser(group)}  
+                onClick={() => {
+                  onSelectUser(null)
+                  setSelectedGroup(group)
+                }}  
               >
                 <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
                   {getInitials(group.name)}

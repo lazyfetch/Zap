@@ -8,7 +8,7 @@ import { StartCall, ReceiveCall, receiveEndCall, sendEndCall,sendRejectCall } fr
 import IncomingCallModal from "./IncomingCallModal.jsx";
 import socket from "../socket.js";
 
-export default function ChatWindow({ currentUser, selectedUser }) {
+export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup }) {
   const [messages, setMessages] = useState([]);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);

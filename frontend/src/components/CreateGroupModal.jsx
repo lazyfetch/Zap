@@ -28,11 +28,11 @@ export default function CreateGroupModal({ currentUser, onClose, onGroupCreated 
       const data = await response.json();
     if (data.success) 
     {
-        onGroupCreated();
+      onGroupCreated();
     } 
     else 
     {
-        alert(data.message || "Failed to create group");
+      alert(data.message || "Failed to create group");
     }
     } 
     catch (error) 
