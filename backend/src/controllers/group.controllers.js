@@ -181,4 +181,148 @@ const deleteGroup = async (req, res) => {
     }
 }
 
-export { createGroup, addMember, removeMember, deleteGroup }
+const getGroup = async (req, res) => {
+    try     
+    {
+        const { groupId, userId } = req.body
+
+        if (!groupId || !userId) 
+        {
+            throw new ApiError(400, "Group ID and User ID are required")
+        }
+
+        const group = await Group.findById(groupId).populate('members', 'username email').populate('admins', 'username email');
+        
+        if (!group) 
+        {
+            throw new ApiError(404, "Group not found")
+        }
+
+        if (!group.members.includes(userId)) 
+        {
+            throw new ApiError(403, "Not a member of this group")
+        }
+
+        return res.status(200).json(
+            new ApiSuccess(200, { group }, "Group details fetched successfully")
+        );
+    } 
+    catch (error) 
+    {
+        throw new ApiError(500, `Error fetching group: ${error}`)
+    }
+}
+
+const updateGroup = async (req, res) => {
+    try 
+    {
+        const { groupId, userId, name, description } = req.body
+
+        if (!groupId || !userId) 
+        {
+            throw new ApiError(400, "Group ID and User ID are required")
+        }
+
+        const group = await Group.findById(groupId)
+
+        if (!group) 
+        {
+            throw new ApiError(404, "Group not found")
+        }
+
+        if (!group.admins.includes(userId))
+        {
+            throw new ApiError(403, "Not authorized to update this group")
+        }
+
+        if (name)
+        {
+            group.name = name
+        }
+
+        if (description)
+        {
+            group.description = description
+        }
+
+        await group.save
+
+        return res.status(200).json(
+            new ApiSuccess(200, { group }, "Group updated successfully")
+        )
+    } 
+    catch (error)
+    {
+        throw new ApiError(500, `Error updating group: ${error}`);
+    }
+};
+
+const leaveGroup = async (req, res) => {
+    try 
+    {
+        const { groupId, userId } = req.body
+
+        if (!groupId || !userId)
+        {
+            throw new ApiError(400, "Group ID and User ID are required")
+        }
+
+        const group = await Group.findById(groupId)
+        if (!group) 
+        {
+            throw new ApiError(404, "Group not found")
+        }
+
+        if (!group.members.includes(userId))
+        {
+            throw new ApiError(400, "User is not a member of the group")
+        }
+
+        if (group.creator.toString() === userId) 
+        {
+            throw new ApiError(400, "Creator cannot leave the group; delete it instead")
+        }
+
+        if (group.admins.includes(userId) && group.admins.length === 1)
+        {
+            throw new ApiError(400, "Cannot leave as the last admin");
+        }
+
+        group.members = group.members.filter(id => id.toString() !== userId);
+        group.admins = group.admins.filter(id => id.toString() !== userId);
+
+        await group.save();
+
+        return res.status(200).json(
+            new ApiSuccess(200, { group }, "Left group successfully")
+        );
+    } 
+    catch (error)
+    {
+        throw new ApiError(500, `Error leaving group: ${error}`);
+    }
+}
+
+const getUserGroups = async (req, res) => {
+    try 
+    {
+        const { userId } = req.body
+
+        if (!userId) 
+        {
+            throw new ApiError(400, "User ID is required")
+        }
+
+        const groups = await Group.find({ members: userId }).populate('members', 'username').populate('admins', 'username');
+
+        return res.status(200).json(
+            new ApiSuccess(200, { groups }, "User groups fetched successfully")
+        )
+    } 
+    catch (error) 
+    {
+        throw new ApiError(500, `Error fetching user groups: ${error}`)
+    }
+};
+
+export { createGroup, addMember, removeMember, deleteGroup, getGroup, updateGroup, leaveGroup, getUserGroups }
