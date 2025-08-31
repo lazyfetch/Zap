@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
@@ -11,6 +11,10 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false); 
+  const [sidebarWidth, setSidebarWidth] = useState(288); 
+  const sidebarMin = 275;
+  const sidebarMax = 500;
+  const resizing = useRef(false);
 
   const checkAuth=async()=>{
       try {
@@ -73,6 +77,29 @@ function App() {
     JoinRoom(user._id); 
   };
 
+  const handleMouseDown = (event) => {
+    resizing.current = true;
+    document.body.style.cursor = "col-resize";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!resizing.current) return;
+    let newWidth = e.clientX;
+    if (newWidth < sidebarMin) newWidth = sidebarMin;
+    if (newWidth > sidebarMax) newWidth = sidebarMax;
+    setSidebarWidth(newWidth);
+  };
+
+  const handleMouseUp = () => {
+    resizing.current = false;
+    document.body.style.cursor = "";
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  };
+
+
   if (!currentUser) {
     return showRegister
       ? <Register onShowLogin={() => setShowRegister(false)} />
@@ -81,10 +108,13 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-black text-gray-100">
-      <div className="flex flex-col w-72 bg-black border-r border-gray-800 overflow-hidden">
+      <div
+        className="flex flex-col bg-black border-r border-gray-800 overflow-hidden"
+        style={{ width: sidebarWidth }}
+      >
         <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
           <h1 className="text-xl font-bold text-amber-400">Zap Chat</h1>
-          <button 
+          <button
             onClick={() => {
               localStorage.removeItem('accessToken');
               localStorage.removeItem('refreshToken');
@@ -101,6 +131,18 @@ function App() {
           currentUser={currentUser}
         />
       </div>
+
+      <div
+        style={{
+          width: 6,
+          cursor: "col-resize",
+          background: "#27272a",
+          zIndex: 10,
+          userSelect: "none"
+        }}
+        onMouseDown={handleMouseDown}
+      />
+
       <div className="flex flex-col flex-1 overflow-hidden bg-black">
         {selectedUser ? (
           <>

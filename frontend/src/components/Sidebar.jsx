@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { JoinRoom } from "../ClientSocket/ClientSocket";
-import { FiSearch, FiSettings, FiUsers } from "react-icons/fi";
+import { FiSearch, FiSettings, FiUsers, FiPlus } from "react-icons/fi"
+import CreateGroupModal from "./CreateGroupModal.jsx"
 
 export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
   const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState([]); 
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("chats")
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
   
   const getUsers = async () => {
     const accessToken = localStorage.getItem('accessToken');  
@@ -14,7 +18,6 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`
       },
-      body:JSON.stringify({userId:currentUser._id}),
       credentials:'include'
     })
     const data=await response.json()
@@ -27,13 +30,34 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
       throw new Error(data.message || "Failed to fetch users");
     }
   };
-  
+
+  const getGroups = async () => {
+    const accessToken = localStorage.getItem('accessToken');
+    const response = await fetch('http://localhost:3000/api/v1/group/groups', {  
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      },
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (!data.success) {
+      console.log("Error getting the groups of this user");
+    }
+    setGroups((data.message && data.message.groups) ? data.message.groups : [])
+  }
+
   useEffect(() => {
     getUsers();
+    getGroups(); 
   }, []);
 
   const filteredUsers = users.filter(user => 
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredGroups = groups.filter(group => 
+    group.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getInitials = (name) => {
@@ -46,7 +70,7 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
         <div className="relative">
           <input
             type="text"
-            placeholder="Search users..."
+            placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-black text-gray-200 rounded-lg pl-10 pr-4 py-2 border border-gray-800 focus:outline-none focus:ring-1 focus:ring-amber-700"
@@ -56,13 +80,28 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
       </div>
       
       <div className="flex border-b border-gray-800 shrink-0">
-        <button className="flex-1 py-3 text-amber-400 border-b-2 border-amber-500 font-medium">
+        <button 
+          className={`flex-1 py-3 font-medium ${activeTab === 'chats' ? 'text-amber-400 border-b-2 border-amber-500' : 'text-gray-400 hover:text-gray-200'}`}
+          onClick={() => setActiveTab('chats')}
+        >
           <div className="flex items-center justify-center">
             <FiUsers className="mr-2" />
             Chats
           </div>
         </button>
-        <button className="flex-1 py-3 text-gray-400 hover:text-gray-200">
+        <button 
+          className={`flex-1 py-3 font-medium ${activeTab === 'groups' ? 'text-amber-400 border-b-2 border-amber-500' : 'text-gray-400 hover:text-gray-200'}`}
+          onClick={() => setActiveTab('groups')}
+        >
+          <div className="flex items-center justify-center">
+            <FiUsers className="mr-2" />
+            Groups
+          </div>
+        </button>
+        <button 
+          className={`flex-1 py-3 font-medium ${activeTab === 'settings' ? 'text-amber-400 border-b-2 border-amber-500' : 'text-gray-400 hover:text-gray-200'}`}
+          onClick={() => setActiveTab('settings')}
+        >
           <div className="flex items-center justify-center">
             <FiSettings className="mr-2" />
             Settings
@@ -70,37 +109,87 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser }) {
         </button>
       </div>
       
-      <ul className="flex-1 overflow-y-auto custom-scrollbar">
-        {filteredUsers.map((user) => (
-          <li
-            key={user._id}
-            className={`flex items-center px-4 py-3 hover:bg-gray-900 cursor-pointer transition-all ${
-              selectedUserId === user._id ? "bg-gray-900" : ""
-            }`}
-            onClick={() => {
-              onSelectUser(user);
-            }}
-          >
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
-                {getInitials(user.username)}
+      {activeTab === 'chats' && (
+        <ul className="flex-1 overflow-y-auto custom-scrollbar">
+          {filteredUsers.map((user) => (
+            <li
+              key={user._id}
+              className={`flex items-center px-4 py-3 hover:bg-gray-900 cursor-pointer transition-all ${
+                selectedUserId === user._id ? "bg-gray-900" : ""
+              }`}
+              onClick={() => onSelectUser(user)}
+            >
+              <div className="relative">
+                <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
+                  {getInitials(user.username)}
+                </div>
+                <span
+                  className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${
+                    user.online ? "bg-green-500" : "bg-gray-600"
+                  }`}
+                ></span>
               </div>
-              <span
-                className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${
-                  user.online ? "bg-green-500" : "bg-gray-600"
-                }`}
-              ></span>
-            </div>
-            <div className="ml-3 flex-1">
-              <div className="font-medium">{user.username}</div>
-              <div className="text-xs text-gray-400">
-                {user.online ? "Online" : "Offline"}
+              <div className="ml-3 flex-1">
+                <div className="font-medium">{user.username}</div>
+                <div className="text-xs text-gray-400">
+                  {user.online ? "Online" : "Offline"}
+                </div>
               </div>
-            </div>
-            <div className="text-xs text-gray-500">12:34</div>
-          </li>
-        ))}
-      </ul>
+              <div className="text-xs text-gray-500">12:34</div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {activeTab === 'groups' && (
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="p-3 shrink-0">
+            <button 
+              className="w-full bg-amber-500 text-black py-2 rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center"
+              onClick={() => setShowCreateGroupModal(true)}
+            >
+              <FiPlus className="mr-2" />
+              Create Group
+            </button>
+          </div>
+          <ul className="flex-1 overflow-y-auto custom-scrollbar">
+            {filteredGroups.map((group) => (
+              <li
+                key={group._id}
+                className="flex items-center px-4 py-3 hover:bg-gray-900 cursor-pointer transition-all"
+                onClick={() => onSelectUser(group)}  
+              >
+                <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
+                  {getInitials(group.name)}
+                </div>
+                <div className="ml-3 flex-1">
+                  <div className="font-medium">{group.name}</div>
+                  <div className="text-xs text-gray-400">
+                    {group.members.length} members
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="flex-1 p-4">
+          <p className="text-gray-400">Settings coming soon...</p>
+        </div>
+      )}
+
+      {showCreateGroupModal && (
+        <CreateGroupModal 
+          currentUser={currentUser} 
+          onClose={() => setShowCreateGroupModal(false)} 
+          onGroupCreated={() => {
+            getGroups()
+            setShowCreateGroupModal(false)
+          }}
+        />
+      )}
     </div>
   );
 }

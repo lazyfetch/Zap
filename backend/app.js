@@ -105,9 +105,11 @@ io.on('connection', (socket) => {
 
 import authRouter from "./src/routes/auth.routes.js";
 import userRouter from "./src/routes/user.routes.js";
+import groupRouter from "./src/routes/group.routes.js";
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/group", groupRouter);
 
 app.use((err, req, res, next) => {
   console.error("ERROR:", err);

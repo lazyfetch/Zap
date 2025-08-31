@@ -4,8 +4,10 @@ import ApiError from "../utils/ApiError.js";
 import ApiSuccess from "../utils/ApiSuccess.js";
 
 const createGroup = async (req, res) => {
-    try {
-        const { name, description, creatorId } = req.body
+    try 
+    {
+        const { name, description} = req.body
+        const creatorId = req.user._id;
     
         if (!name || !creatorId) 
         {
@@ -27,7 +29,7 @@ const createGroup = async (req, res) => {
         })
     
         await group.save()
-    
+        console.log("Group created")
         return res.status(201).json(
             new ApiSuccess(201, { group }, "Group created successfully")
         );
@@ -245,7 +247,7 @@ const updateGroup = async (req, res) => {
             group.description = description
         }
 
-        await group.save
+        await group.save()
 
         return res.status(200).json(
             new ApiSuccess(200, { group }, "Group updated successfully")
@@ -291,7 +293,7 @@ const leaveGroup = async (req, res) => {
         group.members = group.members.filter(id => id.toString() !== userId);
         group.admins = group.admins.filter(id => id.toString() !== userId);
 
-        await group.save();
+        await group.save()
 
         return res.status(200).json(
             new ApiSuccess(200, { group }, "Left group successfully")
@@ -306,14 +308,14 @@ const leaveGroup = async (req, res) => {
 const getUserGroups = async (req, res) => {
     try 
     {
-        const { userId } = req.body
+        const userId = req.user._id;
 
         if (!userId) 
         {
             throw new ApiError(400, "User ID is required")
         }
 
-        const groups = await Group.find({ members: userId }).populate('members', 'username').populate('admins', 'username');
+        const groups = await Group.find({ members: userId }).populate('members', 'username').populate('admins', 'username')
 
         return res.status(200).json(
             new ApiSuccess(200, { groups }, "User groups fetched successfully")
