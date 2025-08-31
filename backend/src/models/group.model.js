@@ -4,9 +4,15 @@ const groupSchema = new Schema(
     {
         name: 
         {
-        type: String,
-        required: true,
-        trim: true,
+          type: String,
+          required: true,
+          trim: true,
+        },
+        creator: 
+        {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
         },
         members: 
         [
@@ -18,21 +24,21 @@ const groupSchema = new Schema(
         ],
         admins: 
         [
-        {
-            type: Schema.Types.ObjectId,
-            ref: "User",
-        },
+          {
+              type: Schema.Types.ObjectId,
+              ref: "User",
+          },
         ],
         avatar: 
         {
-        type: String,
-        default: "/avatars/default-group.png",
+          type: String,
+          default: "/avatars/default-group.png",
         },
         description: 
         {
-        type: String,
-        default: "",
-        trim: true,
+          type: String,
+          default: "",
+          trim: true,
         }
   },
   {
