@@ -4,7 +4,8 @@ import { FiUsers } from "react-icons/fi";
 import { JoinGroupRoom, OnGroupMessage} from "../ClientSocket/ClientSocket.jsx";
 import GroupDetailsModal from "./GroupDetailsModal.jsx";
 
-export default function GroupChatWindow({ currentUser, selectedGroup, refreshKey }) {
+
+export default function GroupChatWindow({ currentUser, selectedGroup,setSelectedGroup, refreshKey }) {
   const [messages, setMessages] = useState([]);
   const [showGroupDetails, setShowGroupDetails] = useState(false);
   const bottomRef = useRef(null);
@@ -121,8 +122,9 @@ export default function GroupChatWindow({ currentUser, selectedGroup, refreshKey
           group={selectedGroup}
           currentUser={currentUser}
           onClose={() => setShowGroupDetails(false)}
-          onGroupUpdated={() => {
-            setShowGroupDetails(false);
+          onGroupUpdated={(updatedGroup) => {
+            setShowGroupDetails(false)
+            setSelectedGroup(updatedGroup)
           }}
         />
       )}

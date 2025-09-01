@@ -159,6 +159,7 @@ function App() {
             <GroupChatWindow
               currentUser={currentUser}
               selectedGroup={selectedGroup}
+              setSelectedGroup={setSelectedGroup}
               refreshKey={groupMessagesRefreshKey}
             />
             <GroupMessageInput

@@ -11,20 +11,81 @@ export default function GroupDetailsModal({ group, currentUser, onClose, onGroup
     admin => admin === currentUser._id || (admin._id && admin._id === currentUser._id)
   );
 
-  const handleSave = async () => {
-    setEditMode(false);
-  };
+    const handleSave = async () => {
+        const accessToken = localStorage.getItem("accessToken");
+        const response = await fetch("http://localhost:3000/api/v1/group/update-group", {
+            method: "PATCH",
+            credentials: "include",
+            headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ groupId:group._id,name:name,description:description }),
+        });
+        const data = await response.json();
+        if (!data.success) 
+        {
+            console.log("Error saving the changes")
+            alert("Error saving the changes")
+            return
+        }
+        if (onGroupUpdated) 
+        {
+            onGroupUpdated(data.data.group)
+        }
+        setEditMode(false);
+    };
 
-  const handleLeave = async () => {
-  };
+    const handleLeave = async () => {
+        const accessToken = localStorage.getItem("accessToken");
+        const response = await fetch("http://localhost:3000/api/v1/group/leave-group", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ groupId:group._id})
+        });
+        const data = await response.json()
+        if (!data.success) 
+        {
+          alert("Error leaving the group")
+          return
+        }
+        if (onGroupUpdated) 
+        {
+          onGroupUpdated(null)
+        }
+    }
 
-  const handleDelete = async () => {
-  };
+
+    const handleDelete = async () => {
+        const accessToken = localStorage.getItem("accessToken");
+        const response = await fetch("http://localhost:3000/api/v1/group/delete", {
+            method: "DELETE",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ groupId:group._id})
+        });
+        const data = await response.json();
+        if (!data.success) 
+        {
+            alert("Error deleting the group")
+            return
+        }
+        if (onGroupUpdated) 
+        {
+            onGroupUpdated(null)
+        }
+    };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
       <div className="bg-black border-2 border-white/30 rounded-xl shadow-2xl w-[420px] h-[540px] p-0 relative flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-2 border-b border-white/10">
           <h2 className="text-2xl font-bold text-white">{name}</h2>
           <button
@@ -38,7 +99,7 @@ export default function GroupDetailsModal({ group, currentUser, onClose, onGroup
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="mb-5">
             <div className="flex items-center mb-1">
-              <span className="text-gray-400 font-medium mr-2">Description</span>
+              <span className="text-amber-400 text-xl font-medium mr-2">Description</span>
               {isAdmin && !editMode && (
                 <button
                   className="text-amber-400 hover:text-amber-500 p-1 rounded transition"
@@ -92,6 +153,9 @@ export default function GroupDetailsModal({ group, currentUser, onClose, onGroup
               {group.members.map(member => (
                 <li key={member._id} className="text-white flex items-center gap-2">
                   {member.username}
+                  {member._id === group.creator && (
+                    <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded ml-2">creator</span>
+                  )}
                   {group.admins.includes(member._id) && (
                     <span className="text-xs bg-amber-500 text-black px-2 py-0.5 rounded ml-2">admin</span>
                   )}

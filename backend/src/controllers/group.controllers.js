@@ -81,7 +81,7 @@ const addMember = async (req, res) => {
             throw new ApiError(404, "User not found")
         }
 
-        if (group.members.includes(userId)) 
+        if (group.members.map(id => id.toString()).includes(userId)) 
         {
             throw new ApiError(400, "User already in group")
         }
@@ -102,11 +102,12 @@ const addMember = async (req, res) => {
 const removeMember = async (req, res) => {
     try 
     {
-        const { groupId, userId, adminId } = req.body
+        const { groupId} = req.body
+        const userId=req.user._id
 
-        if (!groupId || !userId || !adminId) 
+        if (!groupId || !userId ) 
         {
-            throw new ApiError(400, "Group ID, User ID, and Admin ID are required")
+            throw new ApiError(400, "Group ID, User ID are required")
         }
 
         const group = await Group.findById(groupId)
@@ -116,19 +117,9 @@ const removeMember = async (req, res) => {
             throw new ApiError(404, "Group not found")
         }
 
-        if (!group.admins.includes(adminId)) 
-        {
-            throw new ApiError(403, "Not authorized")
-        }
-
-        if (!group.members.includes(userId)) 
+        if (!group.members.map(id => id.toString()).includes(userId.toString())) 
         {
             throw new ApiError(400, "User is not a member of the group")
-        }
-
-        if (group.admins.includes(userId) && group.admins.length === 1) 
-        {
-            throw new ApiError(400, "Cannot remove the last admin")
         }
 
         let newMembers = []
@@ -140,16 +131,6 @@ const removeMember = async (req, res) => {
             }
         }
         group.members = newMembers
-
-        let newAdmins = []
-        for (let id of group.admins) 
-        {
-            if (id.toString() !== userId) 
-            {
-                newAdmins.push(id)
-            }
-        }
-        group.admins = newAdmins
 
         await group.save()
 
@@ -166,7 +147,8 @@ const removeMember = async (req, res) => {
 const deleteGroup = async (req, res) => {
     try 
     {
-        const { groupId, userId } = req.body
+        const {groupId} = req.body
+        const userId=req.user._id
 
         if (!groupId || !userId) 
         {
@@ -180,7 +162,7 @@ const deleteGroup = async (req, res) => {
             throw new ApiError(404, "Group not found")
         }
 
-        if (group.creator.toString() !== userId && !group.admins.includes(userId)) 
+        if (group.creator.toString() !== userId.toString() && !group.admins.map(id => id.toString()).includes(userId.toString())) 
         {
             throw new ApiError(403, "Not authorized to delete this group")
         }
@@ -232,7 +214,8 @@ const getGroup = async (req, res) => {
 const updateGroup = async (req, res) => {
     try 
     {
-        const { groupId, userId, name, description } = req.body
+        const { groupId, name, description } = req.body
+        const userId=req.user._id
 
         if (!groupId || !userId) 
         {
@@ -246,7 +229,7 @@ const updateGroup = async (req, res) => {
             throw new ApiError(404, "Group not found")
         }
 
-        if (!group.admins.includes(userId))
+        if (!group.admins.map(id => id.toString()).includes(userId.toString()))
         {
             throw new ApiError(403, "Not authorized to update this group")
         }
@@ -276,7 +259,8 @@ const updateGroup = async (req, res) => {
 const leaveGroup = async (req, res) => {
     try 
     {
-        const { groupId, userId } = req.body
+        const {groupId} = req.body
+        const userId=req.user._id
 
         if (!groupId || !userId)
         {
@@ -284,28 +268,30 @@ const leaveGroup = async (req, res) => {
         }
 
         const group = await Group.findById(groupId)
+
         if (!group) 
         {
             throw new ApiError(404, "Group not found")
         }
 
-        if (!group.members.includes(userId))
+        const memberIds = group.members.map(id => id.toString());
+        const userIdString = userId.toString();
+
+        if (!memberIds.includes(userIdString))
         {
             throw new ApiError(400, "User is not a member of the group")
         }
 
-        if (group.creator.toString() === userId) 
+        if (group.creator.toString() === userIdString)
         {
-            throw new ApiError(400, "Creator cannot leave the group; delete it instead")
+            await Group.findByIdAndDelete(groupId);
+            return res.status(200).json(
+                new ApiSuccess(200, {}, "Group deleted as creator left")
+            );
         }
 
-        if (group.admins.includes(userId) && group.admins.length === 1)
-        {
-            throw new ApiError(400, "Cannot leave as the last admin");
-        }
-
-        group.members = group.members.filter(id => id.toString() !== userId);
-        group.admins = group.admins.filter(id => id.toString() !== userId);
+        group.members = group.members.filter(id => id.toString() !== userIdString);
+        group.admins = group.admins.filter(id => id.toString() !== userIdString);
 
         await group.save()
 
