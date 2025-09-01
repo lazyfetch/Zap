@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble.jsx";
 import { FiUsers } from "react-icons/fi";
 import { JoinGroupRoom, OnGroupMessage} from "../ClientSocket/ClientSocket.jsx";
+import GroupDetailsModal from "./GroupDetailsModal.jsx";
 
 export default function GroupChatWindow({ currentUser, selectedGroup, refreshKey }) {
   const [messages, setMessages] = useState([]);
+  const [showGroupDetails, setShowGroupDetails] = useState(false);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
 
@@ -78,7 +80,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup, refreshKey
           <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
             <FiUsers size={24} />
           </div>
-          <div className="ml-3">
+          <div className="ml-3 cursor-pointer" onClick={() => setShowGroupDetails(true)}>
             <div className="font-medium">{selectedGroup.name}</div>
             <div className="text-xs text-gray-400">
               {selectedGroup.members.length} members
@@ -114,6 +116,16 @@ export default function GroupChatWindow({ currentUser, selectedGroup, refreshKey
         ))}
         <div ref={bottomRef} className="h-1 bg-transparent" />
       </div>
+      {showGroupDetails && (
+        <GroupDetailsModal
+          group={selectedGroup}
+          currentUser={currentUser}
+          onClose={() => setShowGroupDetails(false)}
+          onGroupUpdated={() => {
+            setShowGroupDetails(false);
+          }}
+        />
+      )}
     </div>
   );
 }
