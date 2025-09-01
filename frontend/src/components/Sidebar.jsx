@@ -9,6 +9,7 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setS
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("chats")
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
+  const [AllGroups,setAllGroups]=useState([])
   
   const getUsers = async () => {
     const accessToken = localStorage.getItem('accessToken');  
@@ -41,17 +42,62 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setS
       credentials: 'include'
     });
     const data = await response.json();
-    if (!data.success) {
+    if (!data.success) 
+    {
       console.log("Error getting the groups of this user");
     }
     setGroups((data.message && data.message.groups) ? data.message.groups : [])
   }
 
+  const getAllGroups=async()=>{
+    const accessToken = localStorage.getItem('accessToken');
+    const response=await fetch('http://localhost:3000/api/v1/group/all',{
+      method:'GET',
+      headers:{
+        'Authorization':`Bearer ${accessToken}`
+      },
+      credentials:'include'
+    })
+    const data=await response.json()
+    if(!data.success)
+    {
+      console.log("Error getting groups")
+    }
+    setAllGroups(data.message.groups)
+
+  }
+
   useEffect(() => {
     getUsers();
     getGroups(); 
+    getAllGroups()
   }, []);
 
+
+  const JoinGroup=async (groupId)=>{
+    const accessToken = localStorage.getItem('accessToken');
+    const response = await fetch('http://localhost:3000/api/v1/group/add-member', {  
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      credentials: 'include',
+      body:JSON.stringify({
+        groupId,
+        userId:currentUser._id})
+    });
+    const data = await response.json();
+    if (!data.success) 
+    {
+      console.log("Error joining the group");
+    }
+    else
+    {
+      getGroups();
+      getAllGroups();
+    }
+  }
   const filteredUsers = users.filter(user => 
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -155,28 +201,75 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setS
               Create Group
             </button>
           </div>
-          <ul className="flex-1 overflow-y-auto custom-scrollbar">
-            {filteredGroups.map((group) => (
-              <li
-                key={group._id}
-                className="flex items-center px-4 py-3 hover:bg-gray-900 cursor-pointer transition-all"
-                onClick={() => {
-                  onSelectUser(null)
-                  setSelectedGroup(group)
-                }}  
-              >
-                <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
-                  {getInitials(group.name)}
-                </div>
-                <div className="ml-3 flex-1">
-                  <div className="font-medium">{group.name}</div>
-                  <div className="text-xs text-gray-400">
-                    {group.members.length} members
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-2">
+            <div>
+              <div className="text-xs text-amber-400 font-bold mb-2 mt-2">Your Groups</div>
+              <ul>
+                {groups.map((group) => (
+                  <li
+                    key={group._id}
+                    className="flex items-center px-4 py-3 hover:bg-gray-900 cursor-pointer transition-all"
+                    onClick={() => {
+                      onSelectUser(null)
+                      setSelectedGroup(group)
+                    }}  
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
+                      {getInitials(group.name)}
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <div className="font-medium">{group.name}</div>
+                      <div className="text-xs text-gray-400">
+                        {group.members.length} members
+                      </div>
+                    </div>
+                  </li>
+                ))}
+                {groups.length === 0 && (
+                  <li className="text-xs text-gray-500 px-4 py-2">No groups joined yet.</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <div className="text-xs text-amber-400 font-bold mb-2 mt-4">Other Groups</div>
+              <ul>
+                {AllGroups
+                  .filter(
+                    (group) =>
+                      !groups.some((g) => g._id === group._id)
+                  )
+                  .map((group) => (
+                    <li
+                      key={group._id}
+                      className="flex items-center px-4 py-3 hover:bg-gray-900 cursor-pointer transition-all"
+                      // You can add a join button here
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
+                        {getInitials(group.name)}
+                      </div>
+                      <div className="ml-3 flex-1">
+                        <div className="font-medium">{group.name}</div>
+                        <div className="text-xs text-gray-400">
+                          {group.members.length} members
+                        </div>
+                      </div>
+                      <button
+                        className="ml-2 px-3 py-1 bg-amber-500 text-black rounded text-xs hover:bg-amber-600"
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          await JoinGroup(group._id)
+                        }}
+                      >
+                        Join
+                      </button>
+                    </li>
+                  ))}
+                {AllGroups.filter((group) => !groups.some((g) => g._id === group._id)).length === 0 && (
+                  <li className="text-xs text-gray-500 px-4 py-2">No other groups available.</li>
+                )}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 

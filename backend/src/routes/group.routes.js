@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyLogin } from "../middleware/auth.middleware.js"
-import { addMember, createGroup, createGroupMessage, deleteGroup, deleteGroupMessage, getGroup, getGroupMessages, getUserGroups, leaveGroup, removeMember, updateGroup } from "../controllers/group.controllers.js";
+import { addMember, createGroup, createGroupMessage, deleteGroup, deleteGroupMessage, getGroup, getGroupMessages, getUserGroups, leaveGroup, removeMember, updateGroup,getAllGroups } from "../controllers/group.controllers.js";
 
 
 const groupRouter=Router()
@@ -16,5 +16,6 @@ groupRouter.route("/groups").get(verifyLogin, getUserGroups)
 groupRouter.route("/create-message").post(verifyLogin, createGroupMessage)
 groupRouter.route("/messages").post(verifyLogin, getGroupMessages)
 groupRouter.route("/delete-message").delete(verifyLogin, deleteGroupMessage)
+groupRouter.route("/all").get(verifyLogin, getAllGroups)
 
 export default groupRouter

@@ -5,6 +5,23 @@ import ApiError from "../utils/ApiError.js";
 import ApiSuccess from "../utils/ApiSuccess.js";
 import mongoose from "mongoose";
 
+const getAllGroups = async (req, res) => {
+    try 
+    {
+        const groups = await Group.find()
+        return res.status(200).json(
+            new ApiSuccess(200, { groups }, "All groups fetched successfully")
+        )
+    } 
+    catch (error) 
+    {
+        return res.status(500).json(
+            new ApiError(500, `Error fetching all groups: ${error}`)
+        )
+    }
+};
+
+
 const createGroup = async (req, res) => {
     try 
     {
@@ -45,9 +62,9 @@ const createGroup = async (req, res) => {
 const addMember = async (req, res) => {
     try 
     {
-        const { groupId, userId, adminId } = req.body;
+        const { groupId, userId} = req.body;
 
-        if (!groupId || !userId || !adminId) 
+        if (!groupId || !userId ) 
         {
             throw new ApiError(400, "Group ID, User ID, and Admin ID are required")
         }
@@ -56,11 +73,6 @@ const addMember = async (req, res) => {
         if (!group) 
         {
             throw new ApiError(404, "Group not found")
-        }
-
-        if (!group.admins.includes(adminId)) 
-        {
-            throw new ApiError(403, "Not authorized")
         }
 
         const user = await User.findById(userId);
@@ -387,7 +399,6 @@ const getGroupMessages = async (req, res, next) => {
             throw new ApiError(403, "Not a member of this group");
         }
 
-        // Log the query and result
         const queryRoomId = new mongoose.Types.ObjectId(groupId);
         console.log("Querying messages with roomId:", queryRoomId);
 
@@ -398,7 +409,9 @@ const getGroupMessages = async (req, res, next) => {
         return res.status(200).json(
             new ApiSuccess(200,"Group messages fetched successfully",{ messages })
         )
-    } catch (error) {
+    } 
+    catch (error) 
+    {
         return next(error);
     }
 };
@@ -442,4 +455,4 @@ const deleteGroupMessage = async (req, res, next) => {
     }
 };
 
-export { createGroup, addMember, removeMember, deleteGroup, getGroup, updateGroup, leaveGroup, getUserGroups, createGroupMessage,getGroupMessages,deleteGroupMessage }
+export { getAllGroups,createGroup, addMember, removeMember, deleteGroup, getGroup, updateGroup, leaveGroup, getUserGroups, createGroupMessage,getGroupMessages,deleteGroupMessage }
