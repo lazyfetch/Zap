@@ -77,4 +77,26 @@ const OnGroupMessage = (callback) => {
     });
 };
 
-export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator,JoinGroupRoom,SendGroupMessage,OnGroupMessage}
+const deleteMessage = (msgObj,receiver)=>{
+    socket.emit('delete',{msgObj,receiver})
+}
+
+const onDeleteMessage=(callback)=>{
+    socket.off('delete')
+    socket.on('delete',(msgObj)=>{
+        callback(msgObj)
+    })
+}
+const deleteGroupMessage = (msgObj, group) => {
+    socket.emit('delete group message', { msgObj, group })
+};
+
+const onDeleteGroupMessage = (callback) => {
+    socket.off('delete group message')
+    socket.on('delete group message', (msgObj) => {
+        callback(msgObj)
+    });
+};
+
+
+export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator,JoinGroupRoom,SendGroupMessage,OnGroupMessage,deleteMessage,onDeleteMessage,deleteGroupMessage,onDeleteGroupMessage}

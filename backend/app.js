@@ -83,6 +83,14 @@ io.on('connection', (socket) => {
     console.log("Reject call relayed");
   });
 
+  socket.on('delete',({msgObj,receiver})=>{
+    io.to(receiver._id).emit('delete',msgObj)
+  })
+  socket.on('delete group message', ({ msgObj, group}) => {
+    io.to(group._id).emit('delete group message', msgObj);
+  });
+  
+
   socket.on('chat message', async (msgObj) => {
     io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
 

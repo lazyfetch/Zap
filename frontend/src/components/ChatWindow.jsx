@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator } from "../ClientSocket/ClientSocket.jsx";
+import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator, deleteMessage, onDeleteMessage } from "../ClientSocket/ClientSocket.jsx";
 import MessageBubble from "./MessageBubble.jsx";
 import TypingBubble from "./TypingBubble.jsx";
 import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
@@ -181,7 +181,30 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
       (msg.sender === currentUser._id && msg.receiver === selectedUser._id) ||
       (msg.sender === selectedUser._id && msg.receiver === currentUser._id)
   );
-
+  const handleDeleteMessage=async(msg)=>{
+    deleteMessage(msg,selectedUser)
+    setMessages(prev =>
+      prev.filter(m => m._id !== msg._id && m.tempId !== msg.tempId)
+    )
+    if (msg._id) {
+    const accessToken = localStorage.getItem("accessToken");
+      await fetch("http://localhost:3000/api/v1/users/delete-message", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ messageId: msg._id }),
+      })
+    }
+  }
+  useEffect(()=>{
+    onDeleteMessage((msg)=>{
+      setMessages(prev =>
+        prev.filter(m => m._id !== msg._id && m.tempId !== msg.tempId)
+      )
+    })
+  },[])
   const groupMessagesByDate = (messages) => {
     const groups = {};
 
@@ -256,6 +279,7 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
                     timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     status={msg.status}
                     senderName={msg.senderName}
+                    onDelete={() => handleDeleteMessage(msg)}
                   />
                 ) : (
                   <MessageBubble
@@ -266,6 +290,7 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
                     status={msg.status}
                     className="message-bubble"
                     senderName={msg.senderName}
+                    onDelete={() => handleDeleteMessage(msg)}
                   />
                 )
               )}

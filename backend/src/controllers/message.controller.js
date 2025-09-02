@@ -21,4 +21,33 @@ const fetchMessages = async (req, res,next) => {
   }
 }
 
-export {fetchMessages}
+const deleteMessage = async (req, res, next) => {
+    try 
+    {
+        const { messageId } = req.body
+        const userId = req.user._id
+
+        const message = await Message.findById(messageId)
+        if (!message)
+        {
+          throw new ApiError(404, "Message not found")
+        }
+
+        if (message.sender.toString() !== userId.toString()) 
+        {
+            throw new ApiError(403, "Not authorized to delete this message");
+        }
+
+        await Message.deleteOne({ _id: messageId });
+
+        return res.status(200).json(
+            new ApiSuccess(200, {}, "Group message deleted successfully")
+        );
+    } 
+    catch (error) 
+    {
+      return next(error);
+    }
+};
+
+export {fetchMessages,deleteMessage}

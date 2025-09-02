@@ -5,6 +5,7 @@ import { JoinGroupRoom, OnGroupMessage, ChangeStatus} from "../ClientSocket/Clie
 import GroupDetailsModal from "./GroupDetailsModal.jsx";
 import FileMessageBubble from "./FileMessageBubble.jsx";
 import GroupMessageInput from "./GroupMessageInput.jsx";
+import { deleteGroupMessage,onDeleteGroupMessage } from "../ClientSocket/ClientSocket.jsx";
 
 export default function GroupChatWindow({ currentUser, selectedGroup,setSelectedGroup, refreshKey }) {
   const [messages, setMessages] = useState([]);
@@ -95,7 +96,30 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
       );
     });
   }, []);
-
+  const handleDeleteMessage = async(msg) => {
+    deleteGroupMessage(msg, selectedGroup)
+    setMessages(prev =>
+      prev.filter(m => m._id !== msg._id && m.tempId !== msg.tempId)
+    )
+    if (msg._id) {
+    const accessToken = localStorage.getItem("accessToken");
+      await fetch("http://localhost:3000/api/v1/group/delete-message", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ messageId: msg._id, groupId:selectedGroup._id }),
+      })
+    }
+  }
+  useEffect(() => {
+    onDeleteGroupMessage((msg) => {
+      setMessages(prev =>
+        prev.filter(m => m._id !== msg._id && m.tempId !== msg.tempId)
+      );
+    });
+  }, []);
   useEffect(() => {
     requestAnimationFrame(() => {
       if (bottomRef.current) {
@@ -116,7 +140,6 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
   };
 
   const messageGroups = groupMessagesByDate(messages);
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-black">
       <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
@@ -155,6 +178,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
                     timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     status={msg.status}
                     senderName={msg.senderName}
+                    onDelete={() => handleDeleteMessage(msg)}
                   />
                 ) : (
                   <MessageBubble
@@ -165,6 +189,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
                     status={msg.status}
                     className="message-bubble"
                     senderName={msg.senderName}
+                    onDelete={() => handleDeleteMessage(msg)}
                   />
                 )
               )}
