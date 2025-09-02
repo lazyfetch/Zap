@@ -56,9 +56,5 @@ backend/.env
 
 # Tailwind/Jest/coverage
 coverage/
-tailwind.config.js
-postcss.config.js
-/frontend/eslint.config.js
-/frontend/vite.config.js
 
 idea.txt
