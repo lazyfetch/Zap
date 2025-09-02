@@ -29,7 +29,6 @@ authRouter.get("/google/callback",
       if (isNewUser) 
       {
         const redirectUrl = `${process.env.CORS_ORIGIN}/?showUsernameSelection=true&tempUserId=${user._id}&email=${encodeURIComponent(user.email)}&avatar=${encodeURIComponent(user.avatar || '')}&displayName=${encodeURIComponent(user.username)}`;
-        console.log("Redirecting to username selection:", redirectUrl);
         res.redirect(redirectUrl);
         return;
       }
@@ -88,8 +87,7 @@ authRouter.post("/google/complete-signup", async (req, res) => {
     }
 
     user.username = username.toLowerCase();
-    await user.save();
-    console.log("Username updated:", user.username);
+    await user.save()
 
     const accessToken = jwt.sign(
       { _id: user._id, email: user.email, username: user.username },

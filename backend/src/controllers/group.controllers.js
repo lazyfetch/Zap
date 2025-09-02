@@ -48,7 +48,6 @@ const createGroup = async (req, res) => {
         })
     
         await group.save()
-        console.log("Group created")
         return res.status(201).json(
             new ApiSuccess(201, { group }, "Group created successfully")
         );
@@ -373,24 +372,22 @@ const getGroupMessages = async (req, res, next) => {
         const { groupId } = req.body;
         const userId = req.user._id;
 
-        console.log("Requested groupId:", groupId);
-
         const group = await Group.findById(groupId);
-        if (!group) {
+        if (!group) 
+        {
             console.log("Group not found for groupId:", groupId);
             throw new ApiError(404, "Group not found");
         }
-        if (!group.members.includes(userId)) {
+        if (!group.members.includes(userId)) 
+        {
             console.log("User not a member:", userId, "Group members:", group.members);
             throw new ApiError(403, "Not a member of this group");
         }
 
         const queryRoomId = new mongoose.Types.ObjectId(groupId);
-        console.log("Querying messages with roomId:", queryRoomId);
 
         const messages = await Message.find({ roomId: queryRoomId }).sort({ createdAt: 1 });
 
-        console.log("Messages found:", messages);
 
         return res.status(200).json(
             new ApiSuccess(200,"Group messages fetched successfully",{ messages })

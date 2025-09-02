@@ -33,7 +33,6 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
         body: JSON.stringify({ groupId: selectedGroup._id }),
       });
       const data = await response.json();
-      console.log("Fetched group messages response:", data);
       if (data.success) 
       {
         setMessages(Array.isArray(data.data.messages) ? data.data.messages : [])
@@ -126,7 +125,6 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
 
   useEffect(() => {
     onReadGroupMessages((data) => {
-      console.log('Received group read event:', data);
       const { sender, messageIds } = data;
       
       if (Array.isArray(messageIds)) {
@@ -182,8 +180,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
       if (!groups[date]) groups[date] = [];
       groups[date].push(msg);
     });
-    console.log(groups)
-    return groups;
+    return groups
   };
 
   const messageGroups = groupMessagesByDate(messages);

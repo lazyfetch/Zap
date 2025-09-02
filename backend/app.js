@@ -14,7 +14,6 @@ const USE_COOKIES = process.env.USE_COOKIES === "true";
 
 const app = express();
 const server = createServer(app);
-console.log(process.env.CORS_ORIGIN)
 const io = new Server(server,{
   cors:{
     origin:process.env.CORS_ORIGIN,
@@ -22,7 +21,6 @@ const io = new Server(server,{
     credentials:true
   }
 });
-console.log(process.env.CORS_ORIGIN)
 app.use(cors({
   origin: process.env.CORS_ORIGIN,
   credentials: USE_COOKIES,
@@ -71,32 +69,26 @@ io.on('connection', (socket) => {
 
   socket.on('start call', ({ sender, receiver }) => {
     io.to(receiver._id).emit('start call', { sender })
-    console.log("Data transmitted")
   })
 
   socket.on('offer', ({ offer, sender, receiver }) => {
     io.to(receiver._id).emit('offer', { offer, sender })
-    console.log("Offer relayed")
   })
 
   socket.on('answer', ({ answer, sender, receiver }) => {
     io.to(receiver._id).emit('answer', { answer, sender })
-    console.log("Answer relayed")
   })
 
   socket.on('ice', ({ candidate, sender, receiver }) => {
     io.to(receiver._id).emit('ice', { candidate, sender });
-    console.log("ICE relayed");
   });
 
   socket.on('end call', ({ sender, receiver }) => {
     io.to(receiver._id).emit('end call', { sender });
-    console.log("End call relayed");
   });
 
   socket.on('reject call', ({ sender, receiver }) => {
     io.to(receiver._id).emit('reject call', { sender });
-    console.log("Reject call relayed");
   });
 
   socket.on('delete',({msgObj,receiver})=>{

@@ -47,7 +47,6 @@ const Register = ({ onShowLogin }) => {
       } 
       else 
       {
-        console.log('Register successful with:', formData);
         onShowLogin()
       }
     } catch (err) {

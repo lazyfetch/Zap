@@ -5,7 +5,6 @@ import { uploadCloudinary } from "../cloudinary.js";
 import fs from "fs";
 
 const LoginCheck = async (req, res) => {
-  console.log("You are logged in!!!");
   const user = req.user;
   return res.status(200).json({
     success: true,

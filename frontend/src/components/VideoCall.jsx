@@ -152,7 +152,6 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
       else 
       {
         await pc.addIceCandidate(new RTCIceCandidate(candidateInit));
-        console.log("Added ICE immediately");
       }
     } 
     catch (error) 
@@ -174,14 +173,12 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
     {
       return;
     }
-    console.log("Flushing ICE queue for", key, iceQueueRef.current[key].length);
     while (iceQueueRef.current[key] && iceQueueRef.current[key].length) 
     {
       const candidate = iceQueueRef.current[key].shift();
       try 
       {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log("Flushed candidate");
+        await pc.addIceCandidate(new RTCIceCandidate(candidate))
       } 
       catch (error) 
       {
@@ -191,7 +188,6 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
   };
 
   const cleanupCall = () => {
-    console.log("cleanupCall");
     try 
     {
       stopTimer()
@@ -253,7 +249,6 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
     const init = async () => {
       try 
       {
-        console.log("initialising: requesting user media");
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
@@ -290,7 +285,6 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
             const answer = await pc2.createAnswer()
             await pc2.setLocalDescription(answer)
 
-            console.log("created answer & setLocalDescription")
             sendAnswer(answer, currentUser, sender)
             await flushIceQueue();
           } 
@@ -325,7 +319,6 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
         });
 
         socket.on("end call", (data) => {
-          console.log("end call received", data);
           cleanupCall();
           if (onClose) 
           {
@@ -334,7 +327,6 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
         });
         socket.on("reject call", (data) =>
         {
-          console.log("reject call received", data);
           cleanupCall();
           if (onClose)
           {
@@ -350,7 +342,6 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
            attachLocalTracks(offerPc, stream)
            const offer = await offerPc.createOffer()
            await offerPc.setLocalDescription(offer)
-           console.log("sending offer");
            sendOffer(offer, currentUser, selectedUser)
          } 
          catch (error) 
@@ -376,7 +367,6 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
             {
               console.log("Error while playing the streams: ", error);
             }
-            console.log("Re-set local srcObject");
           }
           if (Date.now() - start > 6000) 
           {
@@ -386,7 +376,6 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
 
         setLoading(false);
         startTimer()
-        console.log("initialisation completed");
       } 
       catch (error) 
       {
@@ -498,13 +487,11 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
         
         if (sender) 
         {
-          await sender.replaceTrack(newVideoTrack);
-          console.log("Camera switched and track replaced in peer connection");
+          await sender.replaceTrack(newVideoTrack)
         }
       }
 
-      setCurrentCamera(newCamera);
-      console.log(`Camera switched to: ${newCamera}`);
+      setCurrentCamera(newCamera)
 
     } 
     catch (error) 

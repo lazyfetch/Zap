@@ -22,7 +22,6 @@ const EmitMessage=(callback)=>{
 }
 
 const ChangeStatus=(callback)=>{
-    console.log("Setting up db saved listener");
     socket.off('db saved');
     socket.on('db saved',(msg)=>{
         callback(msg)

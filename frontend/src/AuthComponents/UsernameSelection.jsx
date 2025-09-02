@@ -12,9 +12,7 @@ const UsernameSelection = ({ onLoginSuccess }) => {
     const tempUserId = urlParams.get('tempUserId');
     const email = urlParams.get('email');
     const avatar = urlParams.get('avatar');
-    const displayName = urlParams.get('displayName');
-
-    console.log('URL params:', { tempUserId, email, avatar, displayName });
+    const displayName = urlParams.get('displayName')
 
     if (tempUserId && email) 
     {
@@ -64,7 +62,6 @@ const UsernameSelection = ({ onLoginSuccess }) => {
       });
 
       const data = await response.json();
-      console.log('Complete signup response:', data);
       
       if (!data.success)
       {
