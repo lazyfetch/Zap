@@ -50,4 +50,25 @@ const deleteMessage = async (req, res, next) => {
     }
 };
 
-export {fetchMessages,deleteMessage}
+const markMessagesAsRead = async (req, res, next) => {
+  try 
+  {
+    const { messageIds } = req.body
+    const userId = req.user._id
+
+    await Message.updateMany(
+      { _id: { $in: messageIds }, receiver: userId },
+      { $set: { status: "read" } }
+    )
+
+    return res.status(200).json(
+      new ApiSuccess(200, "Messages marked as read", { messageIds })
+    )
+  } 
+  catch (error) 
+  {
+    return next(error)
+  }
+};
+
+export {fetchMessages,deleteMessage,markMessagesAsRead}

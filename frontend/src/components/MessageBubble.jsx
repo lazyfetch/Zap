@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { FiMoreVertical, FiTrash2 } from "react-icons/fi";
 
 function getBubbleColor(self, status) {
+  if (!self) return "bg-gray-800 text-white";
+  
   if (status === "not_delivered") return "bg-gray-700 text-gray-200";
   if (status === "sent") return "bg-emerald-800 text-white";
-  if (status === "seen") return "bg-blue-900 text-white";
+  if (status === "read") return "bg-blue-500 text-white";
+  
+  return "bg-gray-700 text-gray-200"
 }
 
 export default function MessageBubble({ msg, self, timestamp, status = "not_delivered", onDelete }) {

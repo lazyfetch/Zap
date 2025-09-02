@@ -441,4 +441,35 @@ const deleteGroupMessage = async (req, res, next) => {
     }
 };
 
-export { getAllGroups,createGroup, addMember, removeMember, deleteGroup, getGroup, updateGroup, leaveGroup, getUserGroups, createGroupMessage,getGroupMessages,deleteGroupMessage }
+const markGroupMessagesAsRead = async (req, res, next) => {
+  try {
+    const { messageIds, groupId } = req.body;
+    const userId = req.user._id;
+
+    const group = await Group.findById(groupId);
+    if (!group) 
+    {
+      throw new ApiError(404, "Group not found");
+    }
+    
+    if (!group.members.includes(userId)) 
+    {
+      throw new ApiError(403, "Not a member of this group");
+    }
+
+    await Message.updateMany(
+      { _id: { $in: messageIds }, roomId: groupId },
+      { $set: { status: "read" } }
+    )
+
+    return res.status(200).json(
+      new ApiSuccess(200, "Group messages marked as read", { messageIds })
+    )
+  } 
+  catch (error) 
+  {
+    return next(error)
+  }
+};
+
+export { getAllGroups, createGroup, addMember, removeMember, deleteGroup, getGroup, updateGroup, leaveGroup, getUserGroups, createGroupMessage, getGroupMessages, deleteGroupMessage, markGroupMessagesAsRead }

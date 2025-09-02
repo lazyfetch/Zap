@@ -95,8 +95,30 @@ const onDeleteGroupMessage = (callback) => {
     socket.off('delete group message')
     socket.on('delete group message', (msgObj) => {
         callback(msgObj)
-    });
-};
+    })
+}
+
+const readMessages = (senderUserId, receiverUserId, messageIds) => {
+    socket.emit('read', { sender: senderUserId, receiver: receiverUserId, messageIds })
+}
+
+const onReadMessages = (callback) => {
+    socket.off('read')
+    socket.on('read', (data) => {
+        callback(data)
+    })
+}
+
+const readGroupMessages = (senderUserId, groupId, messageIds) => {
+    socket.emit('read group message', { sender: senderUserId, groupId, messageIds })
+}
+
+const onReadGroupMessages = (callback) => {
+    socket.off('read group message')
+    socket.on('read group message', (data) => {
+        callback(data)
+    })
+}
 
 
-export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator,JoinGroupRoom,SendGroupMessage,OnGroupMessage,deleteMessage,onDeleteMessage,deleteGroupMessage,onDeleteGroupMessage}
+export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator,JoinGroupRoom,SendGroupMessage,OnGroupMessage,deleteMessage,onDeleteMessage,deleteGroupMessage,onDeleteGroupMessage,readMessages,onReadMessages,readGroupMessages,onReadGroupMessages}

@@ -1,24 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble.jsx";
 import { FiUsers } from "react-icons/fi";
-import { JoinGroupRoom, OnGroupMessage, ChangeStatus} from "../ClientSocket/ClientSocket.jsx";
+import { JoinGroupRoom, OnGroupMessage, ChangeStatus, deleteGroupMessage, onDeleteGroupMessage, readGroupMessages, onReadGroupMessages } from "../ClientSocket/ClientSocket.jsx";
 import GroupDetailsModal from "./GroupDetailsModal.jsx";
 import FileMessageBubble from "./FileMessageBubble.jsx";
 import GroupMessageInput from "./GroupMessageInput.jsx";
-import { deleteGroupMessage,onDeleteGroupMessage } from "../ClientSocket/ClientSocket.jsx";
 
-export default function GroupChatWindow({ currentUser, selectedGroup,setSelectedGroup, refreshKey }) {
+export default function GroupChatWindow({ currentUser, selectedGroup, setSelectedGroup, refreshKey }) {
   const [messages, setMessages] = useState([]);
   const [showGroupDetails, setShowGroupDetails] = useState(false);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
 
-  const JoinRoom=()=>{
+  const JoinRoom = () => {
     JoinGroupRoom(selectedGroup._id)
   }
-  useEffect(()=>{
+  
+  useEffect(() => {
     JoinRoom()
-  },[])
+  }, [])
+
   useEffect(() => {
     const getGroupMessages = async () => {
       const accessToken = localStorage.getItem("accessToken");
@@ -36,28 +37,26 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
       if (data.success) 
       {
         setMessages(Array.isArray(data.data.messages) ? data.data.messages : [])
-      }
-      else
+      } 
+      else 
       {
         setMessages([])
       }
     };
     getGroupMessages()
-
   }, [selectedGroup, refreshKey]);
 
   useEffect(() => {
     const handleGroupMessage = (msg) => {
-      
       if (msg && (msg.message || msg.fileData)) {
         const messageObj = {
-          content: msg.message || (msg.fileData ? msg.fileData.data.originalName : "File attachment"), 
+          content: msg.message || (msg.fileData ? msg.fileData.data.originalName : "File attachment"),
           tempId: msg.tempId,
           status: msg.sender === currentUser._id ? "not_delivered" : undefined,
           sender: msg.sender,
           roomId: msg.groupId,
           createdAt: new Date().toISOString()
-        };
+        }
 
         if (msg.fileData) 
         {
@@ -87,7 +86,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
           if (m.tempId == msg.tempId) 
           {
             return { ...msg, tempId: m.tempId };
-          } 
+          }
           else 
           {
             return m;
@@ -96,23 +95,70 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
       );
     });
   }, []);
-  const handleDeleteMessage = async(msg) => {
+
+  useEffect(() => {
+    const unreadMessages = messages.filter(
+      m => m.sender !== currentUser._id && 
+           m.status !== "read" && 
+           m._id 
+    );
+    
+    if (unreadMessages.length > 0) {
+      const messageIds = unreadMessages.map(m => m._id);
+      const accessToken = localStorage.getItem("accessToken");
+      
+      fetch("http://localhost:3000/api/v1/group/read-messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ messageIds, groupId: selectedGroup._id }),
+      }).then(response => {
+        if (response.ok) {
+          readGroupMessages(currentUser._id, selectedGroup._id, messageIds);
+        }
+      }).catch(error => {
+        console.error('Failed to mark group messages as read:', error);
+      });
+    }
+  }, [messages, selectedGroup, currentUser._id]);
+
+  useEffect(() => {
+    onReadGroupMessages((data) => {
+      console.log('Received group read event:', data);
+      const { sender, messageIds } = data;
+      
+      if (Array.isArray(messageIds)) {
+        setMessages(prev =>
+          prev.map(msg =>
+            messageIds.includes(msg._id)
+              ? { ...msg, status: "read" }
+              : msg
+          )
+        );
+      }
+    });
+  }, []);
+
+  const handleDeleteMessage = async (msg) => {
     deleteGroupMessage(msg, selectedGroup)
     setMessages(prev =>
       prev.filter(m => m._id !== msg._id && m.tempId !== msg.tempId)
     )
     if (msg._id) {
-    const accessToken = localStorage.getItem("accessToken");
+      const accessToken = localStorage.getItem("accessToken");
       await fetch("http://localhost:3000/api/v1/group/delete-message", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ messageId: msg._id, groupId:selectedGroup._id }),
+        body: JSON.stringify({ messageId: msg._id, groupId: selectedGroup._id }),
       })
     }
   }
+
   useEffect(() => {
     onDeleteGroupMessage((msg) => {
       setMessages(prev =>
@@ -120,6 +166,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
       );
     });
   }, []);
+
   useEffect(() => {
     requestAnimationFrame(() => {
       if (bottomRef.current) {
@@ -140,6 +187,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
   };
 
   const messageGroups = groupMessagesByDate(messages);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-black">
       <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
@@ -167,16 +215,16 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
               </div>
             </div>
             <div className="space-y-3">
-              {msgs.map((msg, index) => 
+              {msgs.map((msg, index) =>
                 msg.mediaType === "file" ? (
                   <FileMessageBubble
                     key={msg._id || index}
-                    fileName={msg.content} 
+                    fileName={msg.content}
                     fileUrl={msg.mediaUrl}
                     fileSize={msg.fileSize || 0}
                     self={msg.sender === currentUser._id}
                     timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    status={msg.status}
+                    status={msg.sender === currentUser._id ? msg.status : undefined} 
                     senderName={msg.senderName}
                     onDelete={() => handleDeleteMessage(msg)}
                   />
@@ -186,7 +234,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
                     msg={msg.content}
                     self={msg.sender === currentUser._id}
                     timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    status={msg.status}
+                    status={msg.sender === currentUser._id ? msg.status : undefined}
                     className="message-bubble"
                     senderName={msg.senderName}
                     onDelete={() => handleDeleteMessage(msg)}
@@ -198,12 +246,12 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
         ))}
         <div ref={bottomRef} className="h-1 bg-transparent" />
       </div>
-      
-      <GroupMessageInput 
+
+      <GroupMessageInput
         selectedGroup={selectedGroup}
         currentUser={currentUser}
       />
-      
+
       {showGroupDetails && (
         <GroupDetailsModal
           group={selectedGroup}

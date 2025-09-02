@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator, deleteMessage, onDeleteMessage } from "../ClientSocket/ClientSocket.jsx";
+import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator, deleteMessage, onDeleteMessage, readMessages, onReadMessages } from "../ClientSocket/ClientSocket.jsx";
 import MessageBubble from "./MessageBubble.jsx";
 import TypingBubble from "./TypingBubble.jsx";
 import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
@@ -219,6 +219,44 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
     return groups
   }
 
+  useEffect(() => {
+    const unreadMessages = messages.filter(
+      m => m.receiver === currentUser._id && m.status !== "read"
+    )
+    if (unreadMessages.length > 0) 
+    {
+      const messageIds = unreadMessages.map(m => m._id).filter(id => id)
+      if (messageIds.length > 0) {
+        const accessToken = localStorage.getItem("accessToken");
+        fetch("http://localhost:3000/api/v1/users/read-messages", {
+          method: "POST", 
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ messageIds }),
+        }).then(() => {
+          readMessages(currentUser._id, selectedUser._id, messageIds)
+        });
+      }
+    }
+  }, [messages, selectedUser])
+
+  useEffect(() => {
+    onReadMessages((data) => { 
+      const { sender, messageIds } = data;
+      if (Array.isArray(messageIds)) {
+        setMessages(prev =>
+          prev.map(msg =>
+            messageIds.includes(msg._id)
+              ? { ...msg, status: "read" }
+              : msg
+          )
+        );
+      }
+    });
+  }, []);
+
   const messageGroups = groupMessagesByDate(filteredMessages);
 
   return (
@@ -277,7 +315,7 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
                     fileSize={msg.fileSize || 0} 
                     self={msg.sender === currentUser._id}
                     timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    status={msg.status}
+                    status={msg.sender === currentUser._id ? msg.status : undefined} 
                     senderName={msg.senderName}
                     onDelete={() => handleDeleteMessage(msg)}
                   />
@@ -287,7 +325,7 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
                     msg={msg.content}
                     self={msg.sender === currentUser._id}
                     timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    status={msg.status}
+                    status={msg.sender === currentUser._id ? msg.status : undefined} 
                     className="message-bubble"
                     senderName={msg.senderName}
                     onDelete={() => handleDeleteMessage(msg)}

@@ -89,6 +89,10 @@ io.on('connection', (socket) => {
   socket.on('delete group message', ({ msgObj, group}) => {
     io.to(group._id).emit('delete group message', msgObj);
   });
+
+  socket.on('read', ({ sender, receiver, messageIds }) => {
+    io.to(receiver).emit('read', { sender, messageIds })
+  })
   
 
   socket.on('chat message', async (msgObj) => {
@@ -167,6 +171,10 @@ io.on('connection', (socket) => {
     setTimeout(() => {
       io.to(msgObj.groupId).emit('db saved', savedMsgObject);
     }, 1000);
+  })
+
+  socket.on('read group message', ({ sender, groupId, messageIds }) => {
+    io.to(groupId).emit('read group message', { sender, messageIds })
   })
 })
 
