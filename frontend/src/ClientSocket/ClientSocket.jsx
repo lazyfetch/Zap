@@ -4,12 +4,13 @@ const JoinRoom = (userId) => {
     socket.emit('join room', userId);
 };
 
-const ClientSocket = (value, senderUserId,receiverUserId,tempId) => {
+const ClientSocket = (value, senderUserId, receiverUserId, tempId, fileData) => {
     socket.emit('chat message', {
-        message:value,
-        sender:senderUserId,
-        receiver:receiverUserId,
-        tempId:tempId
+        message: value,
+        sender: senderUserId,
+        receiver: receiverUserId,
+        tempId: tempId,
+        fileData: fileData 
     });
 }       
 

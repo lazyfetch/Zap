@@ -99,7 +99,8 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setS
     }
   }
   const filteredUsers = users.filter(user => 
-    user.username.toLowerCase().includes(searchTerm.toLowerCase())
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    user._id !== currentUser._id
   );
 
   const filteredGroups = groups.filter(group => 

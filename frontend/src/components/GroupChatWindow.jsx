@@ -3,7 +3,7 @@ import MessageBubble from "./MessageBubble.jsx";
 import { FiUsers } from "react-icons/fi";
 import { JoinGroupRoom, OnGroupMessage} from "../ClientSocket/ClientSocket.jsx";
 import GroupDetailsModal from "./GroupDetailsModal.jsx";
-
+import FileMessageBubble from "./FileMessageBubble.jsx";
 
 export default function GroupChatWindow({ currentUser, selectedGroup,setSelectedGroup, refreshKey }) {
   const [messages, setMessages] = useState([]);
@@ -101,17 +101,30 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
               </div>
             </div>
             <div className="space-y-3">
-              {msgs.map((msg, index) => (
-                <MessageBubble
-                  key={msg._id || index}
-                  msg={msg.content}
-                  self={msg.sender === currentUser._id}
-                  timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  status={msg.status}
-                  className="message-bubble"
-                  senderName={msg.senderName}
-                />
-              ))}
+              {msgs.map((msg, index) => 
+                msg.mediaType === "file" ? (
+                  <FileMessageBubble
+                    key={msg._id || index}
+                    fileName={msg.content} 
+                    fileUrl={msg.mediaUrl}
+                    fileSize={msg.fileSize || 0}
+                    self={msg.sender === currentUser._id}
+                    timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    status={msg.status}
+                    senderName={msg.senderName}
+                  />
+                ) : (
+                  <MessageBubble
+                    key={msg._id || index}
+                    msg={msg.content}
+                    self={msg.sender === currentUser._id}
+                    timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    status={msg.status}
+                    className="message-bubble"
+                    senderName={msg.senderName}
+                  />
+                )
+              )}
             </div>
           </div>
         ))}

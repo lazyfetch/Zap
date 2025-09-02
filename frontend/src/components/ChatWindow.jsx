@@ -6,6 +6,7 @@ import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
 import VideoCall from "./VideoCall.jsx";
 import { StartCall, ReceiveCall, receiveEndCall, sendEndCall,sendRejectCall } from "../webRTC/webRTCSockets.js"; 
 import IncomingCallModal from "./IncomingCallModal.jsx";
+import FileMessageBubble from "./FileMessageBubble.jsx";
 import socket from "../socket.js";
 
 export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup }) {
@@ -90,7 +91,7 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
         prev.map((m) => {
           if (m.tempId == msg.tempId) 
           {
-            return { ...m, status: "sent"};
+            return { ...msg, tempId: m.tempId };
           } 
           else 
           {
@@ -103,22 +104,32 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
 
   useEffect(() => {
     EmitMessage((msg) => {
-      if (msg && msg.message) 
+      if (msg && (msg.message || msg.fileData)) 
       {
-        setMessages((prev) => [
-          ...prev, 
-          { 
-            content: msg.message, 
-            tempId: msg.tempId, 
-            status: msg.sender === currentUser._id ? "not_delivered" : undefined,
-            ...msg 
-          }
-        ]);
-      } else if (typeof msg === "string") {
-        setMessages((prev) => [...prev, { content: msg }]);
+        const messageObj = {
+          content: msg.message || (msg.fileData ? msg.fileData.data.originalName : "File attachment"), 
+          tempId: msg.tempId,
+          status: msg.sender === currentUser._id ? "not_delivered" : undefined,
+          sender: msg.sender,
+          receiver: msg.receiver,
+          createdAt: new Date().toISOString()
+        };
+
+        if (msg.fileData) 
+        {
+          messageObj.mediaType = "file"
+          messageObj.mediaUrl = msg.fileData.data.url
+          messageObj.fileSize = msg.fileData.data.size
+        }
+
+        setMessages((prev) => [...prev, messageObj])
+      } 
+      else if (typeof msg === "string") 
+      {
+        setMessages((prev) => [...prev, { content: msg }])
       }
     });
-  }, [currentUser._id]); 
+  }, [currentUser._id])
 
   useEffect(() => {
   TypingIndicator(({ sender }) => 
@@ -131,7 +142,7 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
   StopTypingIndicator(({ sender }) => {
     if (sender === selectedUser._id) 
     {
-      setIsOtherUserTyping(false);
+      setIsOtherUserTyping(false)
     }
   });
   }, [selectedUser._id]);
@@ -234,16 +245,30 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
               </div>
             </div>
             <div className="space-y-3">
-              {msgs.map((msg, index) => (
-                <MessageBubble
-                  key={msg._id || index}
-                  msg={msg.content}
-                  self={msg.sender === currentUser._id}
-                  timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  status={msg.status}
-                  className="message-bubble"
-                />
-              ))}
+              {msgs.map((msg, index) => 
+                msg.mediaType === "file" ? (
+                  <FileMessageBubble
+                    key={msg._id || index}
+                    fileName={msg.content} 
+                    fileUrl={msg.mediaUrl}
+                    fileSize={msg.fileSize || 0} 
+                    self={msg.sender === currentUser._id}
+                    timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    status={msg.status}
+                    senderName={msg.senderName}
+                  />
+                ) : (
+                  <MessageBubble
+                    key={msg._id || index}
+                    msg={msg.content}
+                    self={msg.sender === currentUser._id}
+                    timestamp={new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    status={msg.status}
+                    className="message-bubble"
+                    senderName={msg.senderName}
+                  />
+                )
+              )}
             </div>
           </div>
         ))}

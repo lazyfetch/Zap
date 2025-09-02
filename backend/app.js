@@ -86,27 +86,79 @@ io.on('connection', (socket) => {
   socket.on('chat message', async (msgObj) => {
     io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
 
-    const savedMsg = await Message.create({
-      content: msgObj.message,
+    let content = "File attachment"; s
+    
+    if (msgObj.message && msgObj.message.trim() !== "") 
+    {
+      content = msgObj.message
+    } 
+    else if (msgObj.fileData && msgObj.fileData.data && msgObj.fileData.data.originalName) 
+    {
+      content = msgObj.fileData.data.originalName
+    }
+
+    const messageData = {
+      content: content, 
       sender: msgObj.sender,
       receiver: msgObj.receiver,
       status: "sent",
       tempId: msgObj.tempId
-    });
+    };
 
-    const savedMsgObject = savedMsg.toObject ? savedMsg.toObject() : savedMsg;
+    if (msgObj.fileData && msgObj.fileData.data) 
+    {
+      messageData.mediaUrl = msgObj.fileData.data.url
+      messageData.mediaType = "file";
+      messageData.fileSize = msgObj.fileData.data.size
+    }
+
+    const savedMsg = await Message.create(messageData)
+    const savedMsgObject = savedMsg.toObject ? savedMsg.toObject() : savedMsg
     
     setTimeout(() => {
       io.to(msgObj.receiver).to(msgObj.sender).emit('db saved', savedMsgObject);
     }, 1000);
-  });
+  })
 
   socket.on('join group room', (groupId) => {
     socket.join(groupId)
   })
 
   socket.on('group message', async (msgObj) => {
-    io.to(msgObj.groupId).emit('group message', msgObj)
+    io.to(msgObj.groupId).emit('group message', msgObj);
+    
+    let content = "File attachment"
+
+    if (msgObj.message && msgObj.message.trim() !== "") 
+    {
+      content = msgObj.message
+    } 
+    else if (msgObj.fileData && msgObj.fileData.data && msgObj.fileData.data.originalName) 
+    {
+      content = msgObj.fileData.data.originalName
+    }
+
+    const messageData = {
+      content: content,
+      sender: msgObj.sender,
+      roomId: msgObj.groupId,
+      status: "sent",
+      tempId: msgObj.tempId
+    };
+
+    if (msgObj.fileData && msgObj.fileData.data) 
+    {
+      messageData.mediaUrl = msgObj.fileData.data.url
+      messageData.mediaType = "file";
+      messageData.fileSize = msgObj.fileData.data.size
+    }
+
+    const savedMsg = await Message.create(messageData);
+    const savedMsgObject = savedMsg.toObject ? savedMsg.toObject() : savedMsg;
+    
+    setTimeout(() => {
+      io.to(msgObj.groupId).emit('db saved', savedMsgObject);
+    }, 1000);
   })
 })
 
@@ -114,10 +166,12 @@ io.on('connection', (socket) => {
 import authRouter from "./src/routes/auth.routes.js";
 import userRouter from "./src/routes/user.routes.js";
 import groupRouter from "./src/routes/group.routes.js";
+import fileRouter from "./src/routes/file.routes.js";
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/group", groupRouter);
+app.use("/api/v1/file", fileRouter);
 
 app.use((err, req, res, next) => {
   console.error("ERROR:", err);

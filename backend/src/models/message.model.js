@@ -23,6 +23,11 @@ const messageSchema= new Schema(
             enum: ["text", "image", "video", "file"],
             default: "text",
         },
+        fileSize: 
+        {
+            type: Number,
+            default: null
+        },
         content:
         {
             type:String,
@@ -41,7 +46,8 @@ const messageSchema= new Schema(
             ref: "Group", 
             default: null 
         },
-        tempId:{
+        tempId:
+        {
             type:String
         }
     },
