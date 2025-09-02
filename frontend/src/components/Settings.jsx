@@ -16,6 +16,11 @@ export default function Settings({ currentUser, onUserUpdate, onLogout })
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  const getInitials = (name) => {
+    if (!name) return "??";
+    return name.substring(0, 2).toUpperCase();
+  };
+
   const handleUsernameChange = async () => {
     if (!username.trim() || username === currentUser.username) return;
     
@@ -196,7 +201,7 @@ export default function Settings({ currentUser, onUserUpdate, onLogout })
   }
 
   return (
-    <div className="flex-1 p-4 overflow-y-auto scrollbar-hide">
+    <div className="p-4 h-full overflow-y-auto custom-scrollbar bg-black">
       <div className="max-w-2xl mx-auto">
         <h2 className="text-2xl font-bold text-amber-400 mb-6">Settings</h2>
         <div className="flex space-x-1 mb-6 bg-gray-900 rounded-lg p-1">
@@ -229,17 +234,25 @@ export default function Settings({ currentUser, onUserUpdate, onLogout })
               </h3>
               <div className="flex items-center space-x-4">
                 <div className="relative">
-                  {currentUser.avatar ? (
+                  {currentUser.avatar && currentUser.avatar !== "/avatars/default.png" ? (
                     <img
                       src={currentUser.avatar}
                       alt="Avatar"
                       className="w-20 h-20 rounded-full object-cover border-2 border-gray-700"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
                     />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium text-xl border-2 border-gray-600">
-                      {currentUser.username.substring(0, 2).toUpperCase()}
-                    </div>
-                  )}
+                  ) : null}
+                  <div 
+                    className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium text-xl border-2 border-gray-600"
+                    style={{ 
+                      display: currentUser.avatar && currentUser.avatar !== "/avatars/default.png" ? 'none' : 'flex' 
+                    }}
+                  >
+                    {getInitials(currentUser.username)}
+                  </div>
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className="absolute -bottom-1 -right-1 bg-amber-500 hover:bg-amber-600 text-black p-2 rounded-full transition-colors"
