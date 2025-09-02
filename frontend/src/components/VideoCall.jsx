@@ -16,6 +16,9 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
   const timerRef = useRef(null)
 
   const iceQueueRef = useRef({});
+  const [currentCamera, setCurrentCamera] = useState('user');
+  const [availableCameras, setAvailableCameras] = useState([]);
+
   const startTimer = () =>
   {
     if (timerRef.current)
@@ -448,6 +451,101 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
     setIsVideoOff(!track.enabled);
   }
 
+  const switchCamera = async () => {
+    try 
+    {
+      if (!localStreamRef.current) 
+      {
+        return
+      }
+
+      const currentVideoTrack = localStreamRef.current.getVideoTracks()[0]
+      if (currentVideoTrack) 
+      {
+        currentVideoTrack.stop()
+      }
+
+      const newCamera = currentCamera === 'user' ? 'environment' : 'user';
+      
+      const newVideoConstraints = {
+        facingMode: newCamera,
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      };
+
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: newVideoConstraints,
+        audio: true 
+      });
+
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+
+      const combinedStream = new MediaStream([newVideoTrack, audioTrack]);
+      localStreamRef.current = combinedStream;
+
+      if (localVideoRef.current) 
+      {
+        localVideoRef.current.srcObject = combinedStream;
+      }
+
+      const pc = pcRef.current
+      if (pc) 
+      {
+        const sender = pc.getSenders().find(s => 
+          s.track && s.track.kind === 'video'
+        );
+        
+        if (sender) 
+        {
+          await sender.replaceTrack(newVideoTrack);
+          console.log("Camera switched and track replaced in peer connection");
+        }
+      }
+
+      setCurrentCamera(newCamera);
+      console.log(`Camera switched to: ${newCamera}`);
+
+    } 
+    catch (error) 
+    {
+      console.error('Camera switch failed:', error)
+      try 
+      {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+        
+        const newVideoTrack = fallbackStream.getVideoTracks()[0];
+        const audioTrack = localStreamRef.current.getAudioTracks()[0];
+        const combinedStream = new MediaStream([newVideoTrack, audioTrack]);
+        
+        localStreamRef.current = combinedStream;
+        if (localVideoRef.current) 
+        {
+          localVideoRef.current.srcObject = combinedStream;
+        }
+        
+        const pc = pcRef.current;
+        if (pc) 
+        {
+          const sender = pc.getSenders().find(s => 
+            s.track && s.track.kind === 'video'
+          );
+          if (sender) 
+          {
+            await sender.replaceTrack(newVideoTrack);
+          }
+        }
+      } 
+      catch (fallbackError) 
+      {
+        console.error('Fallback camera switch also failed:', fallbackError);
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
       {loading && <LoadingScreen message="Initializing call..." />}
@@ -494,7 +592,10 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
                 <FaVideo className="text-white text-xl" />
               )}
             </button>
-            <button className="w-12 h-12 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center shadow-md">
+            <button 
+              onClick={switchCamera}
+              className="w-12 h-12 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center shadow-md"
+            >
               <FaSync className="text-white text-xl" />
             </button>
             <button
