@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { JoinRoom, emitUserOnline } from '../ClientSocket/ClientSocket';
+import config from '../config.js';
 
 const Login = ({ onLoginSuccess, onShowRegister }) => {
   const [formData, setFormData] = useState({
@@ -23,7 +24,7 @@ const Login = ({ onLoginSuccess, onShowRegister }) => {
 
     try 
     {
-      const response=await fetch('http://localhost:3000/api/v1/auth/login',{
+      const response=await fetch(`${config.API_URL}/api/v1/auth/login`,{
         method:'POST',
         headers:
         {
@@ -45,7 +46,7 @@ const Login = ({ onLoginSuccess, onShowRegister }) => {
         localStorage.setItem('accessToken', data.data.accessToken);
         localStorage.setItem('refreshToken', data.data.refreshToken);
         
-        await fetch('http://localhost:3000/api/v1/users/presence', {
+        await fetch(`${config.API_URL}/api/v1/users/presence`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -71,7 +72,7 @@ const Login = ({ onLoginSuccess, onShowRegister }) => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:3000/api/v1/auth/google';
+    window.location.href = `${config.API_URL}/api/v1/auth/google`;
   };
 
   return (

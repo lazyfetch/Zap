@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { JoinRoom, emitUserOnline } from '../ClientSocket/ClientSocket';
+import config from '../config.js';
 
 const UsernameSelection = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
@@ -49,8 +50,8 @@ const UsernameSelection = ({ onLoginSuccess }) => {
     setError('');
 
     try 
-    { 
-      const response = await fetch('http://localhost:3000/api/v1/auth/google/complete-signup', {
+    {
+      const response = await fetch(`${config.API_URL}/api/v1/auth/google/complete-signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -63,7 +64,7 @@ const UsernameSelection = ({ onLoginSuccess }) => {
 
       const data = await response.json();
       
-      if (!data.success)
+      if (!data.success) 
       {
         setError(data.message || 'Failed to complete signup')
         return
@@ -72,7 +73,7 @@ const UsernameSelection = ({ onLoginSuccess }) => {
       localStorage.setItem('accessToken', data.data.accessToken)
       localStorage.setItem('refreshToken', data.data.refreshToken)
       
-      await fetch('http://localhost:3000/api/v1/users/presence', {
+      await fetch(`${config.API_URL}/api/v1/users/presence`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +84,6 @@ const UsernameSelection = ({ onLoginSuccess }) => {
 
       JoinRoom(data.data.user._id);
       emitUserOnline(data.data.user._id);
-      
       onLoginSuccess(data.data.user);
       
     } 

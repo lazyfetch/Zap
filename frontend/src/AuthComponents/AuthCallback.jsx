@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { JoinRoom, emitUserOnline } from '../ClientSocket/ClientSocket';
-
+import {API_URL} from "../config.js"
 const AuthCallback = ({ onLoginSuccess }) => {
   const location = useLocation();
 
@@ -29,7 +29,7 @@ const AuthCallback = ({ onLoginSuccess }) => {
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
           
-          await fetch('http://localhost:3000/api/v1/users/presence', {
+          await fetch(`${API_URL}/api/v1/users/presence`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

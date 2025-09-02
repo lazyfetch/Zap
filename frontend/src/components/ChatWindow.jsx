@@ -8,6 +8,7 @@ import { StartCall, ReceiveCall, receiveEndCall, sendEndCall,sendRejectCall } fr
 import IncomingCallModal from "./IncomingCallModal.jsx";
 import FileMessageBubble from "./FileMessageBubble.jsx";
 import socket from "../socket.js";
+import { API_URL } from "../config.js";
 
 export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup }) {
   const [messages, setMessages] = useState([]);
@@ -28,7 +29,7 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
     try 
     {
       const accessToken = localStorage.getItem('accessToken');
-      const response = await fetch(`http://localhost:3000/api/v1/users/presence/${selectedUser._id}`, {
+      const response = await fetch(`${API_URL}/api/v1/users/presence/${selectedUser._id}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -100,7 +101,7 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
 
   const getMessages = async () => {
     const accessToken = localStorage.getItem("accessToken");
-    const response = await fetch("http://localhost:3000/api/v1/users/messages", {
+    const response = await fetch(`${API_URL}/api/v1/users/messages`, {
       method: "POST",
       credentials: "include",
       headers: {
@@ -224,7 +225,7 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
     )
     if (msg._id) {
     const accessToken = localStorage.getItem("accessToken");
-      await fetch("http://localhost:3000/api/v1/users/delete-message", {
+      await fetch(`${API_URL}/api/v1/users/delete-message`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -266,7 +267,7 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
       const messageIds = unreadMessages.map(m => m._id).filter(id => id)
       if (messageIds.length > 0) {
         const accessToken = localStorage.getItem("accessToken");
-        fetch("http://localhost:3000/api/v1/users/read-messages", {
+        fetch(`${API_URL}/api/v1/users/read-messages`, {
           method: "POST", 
           headers: {
             "Content-Type": "application/json",

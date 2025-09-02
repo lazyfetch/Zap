@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { FiUser, FiLock, FiCamera, FiTrash2, FiUpload, FiEye, FiEyeOff } from 'react-icons/fi';
+import {API_URL} from "../config.js"
 
 export default function Settings({ currentUser, onUserUpdate, onLogout }) 
 {
@@ -22,7 +23,7 @@ export default function Settings({ currentUser, onUserUpdate, onLogout })
     try 
     {
       const accessToken = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:3000/api/v1/users/change-username', {
+      const response = await fetch(`${API_URL}/api/v1/users/change-username`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -69,7 +70,7 @@ export default function Settings({ currentUser, onUserUpdate, onLogout })
     try 
     {
       const accessToken = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:3000/api/v1/users/change-password', {
+      const response = await fetch(`${API_URL}/api/v1/users/change-password`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +123,7 @@ export default function Settings({ currentUser, onUserUpdate, onLogout })
       formData.append('avatar', file);
 
       const accessToken = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:3000/api/v1/users/avatar', {
+      const response = await fetch(`${API_URL}/api/v1/users/avatar`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -132,10 +133,13 @@ export default function Settings({ currentUser, onUserUpdate, onLogout })
       });
 
       const data = await response.json();
-      if (data.success) {
+      if (data.success) 
+      {
         onUserUpdate({ ...currentUser, avatar: data.data.avatar });
         alert('Avatar updated successfully!');
-      } else {
+      } 
+      else 
+      {
         alert(data.message || 'Failed to update avatar');
       }
     } 
@@ -150,16 +154,17 @@ export default function Settings({ currentUser, onUserUpdate, onLogout })
   };
 
   const handleDeleteAccount = async () => {
-    if (deleteConfirmation !== 'DELETE') {
-      alert('Please type "DELETE" to confirm');
-      return;
+    if (deleteConfirmation !== 'DELETE') 
+    {
+      alert('Please type "DELETE" to confirm')
+      return
     }
 
     setLoading(true);
     try 
     {
       const accessToken = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:3000/api/v1/users/delete', {
+      const response = await fetch(`${API_URL}/api/v1/users/delete`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`

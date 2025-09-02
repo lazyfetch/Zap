@@ -5,6 +5,7 @@ import { JoinGroupRoom, OnGroupMessage, ChangeStatus, deleteGroupMessage, onDele
 import GroupDetailsModal from "./GroupDetailsModal.jsx";
 import FileMessageBubble from "./FileMessageBubble.jsx";
 import GroupMessageInput from "./GroupMessageInput.jsx";
+import {API_URL} from "../config.js"
 
 export default function GroupChatWindow({ currentUser, selectedGroup, setSelectedGroup, refreshKey }) {
   const [messages, setMessages] = useState([]);
@@ -23,7 +24,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
   useEffect(() => {
     const getGroupMessages = async () => {
       const accessToken = localStorage.getItem("accessToken");
-      const response = await fetch("http://localhost:3000/api/v1/group/messages", {
+      const response = await fetch(`${API_URL}/api/v1/group/messages`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -106,7 +107,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
       const messageIds = unreadMessages.map(m => m._id);
       const accessToken = localStorage.getItem("accessToken");
       
-      fetch("http://localhost:3000/api/v1/group/read-messages", {
+      fetch(`${API_URL}/api/v1/group/read-messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -114,7 +115,8 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
         },
         body: JSON.stringify({ messageIds, groupId: selectedGroup._id }),
       }).then(response => {
-        if (response.ok) {
+        if (response.ok) 
+        {
           readGroupMessages(currentUser._id, selectedGroup._id, messageIds);
         }
       }).catch(error => {
@@ -146,7 +148,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
     )
     if (msg._id) {
       const accessToken = localStorage.getItem("accessToken");
-      await fetch("http://localhost:3000/api/v1/group/delete-message", {
+      await fetch(`${API_URL}/api/v1/group/delete-message`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

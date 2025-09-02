@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { FiSend, FiSmile, FiPaperclip, FiMic } from "react-icons/fi";
 import { SendGroupMessage } from "../ClientSocket/ClientSocket.jsx";
-
+import {API_URL} from "../config.js"
 export default function GroupMessageInput({ selectedGroup, currentUser, onMessageSent }) {
   const [message, setMessage] = useState("");
   const inputRef = useRef(null);
@@ -31,7 +31,7 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
         const formData = new FormData();
         formData.append("file", selectedFile);
         const accessToken = localStorage.getItem("accessToken");
-        const response = await fetch("http://localhost:3000/api/v1/file/upload-file", {
+        const response = await fetch(`${API_URL}/api/v1/file/upload-file`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -40,14 +40,17 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
           credentials: 'include'
         });
         const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.message || "Upload failed");
+        if (!result.success) 
+        {
+          throw new Error(result.message || "Upload failed")
         }
         fileData = result.data;
-      } catch (error) {
-        setErrorDialog("File upload failed: " + error.message);
-        setIsSending(false);
-        return;
+      } 
+      catch (error) 
+      {
+        setErrorDialog("File upload failed: " + error.message)
+        setIsSending(false)
+        return
       }
     }
     SendGroupMessage({
@@ -77,15 +80,17 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
     const file = e.target.files[0];
     if (!file) return;
     
-    if (file.size > MAX_SIZE) {
-      setErrorDialog("File size exceeds 10MB limit.");
-      return;
+    if (file.size > MAX_SIZE) 
+    {
+      setErrorDialog("File size exceeds 10MB limit.")
+      return
     }
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setErrorDialog("File type not allowed.");
-      return;
+    if (!ALLOWED_TYPES.includes(file.type)) 
+    {
+      setErrorDialog("File type not allowed.")
+      return
     }
-    setSelectedFile(file);
+    setSelectedFile(file)
   };
 
   return (

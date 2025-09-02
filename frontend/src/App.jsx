@@ -9,6 +9,7 @@ import { JoinRoom, emitUserOnline, emitUserOffline } from "./ClientSocket/Client
 import { FiLogOut } from 'react-icons/fi';
 import GroupChatWindow from "./components/GroupChatWindow";
 import GroupMessageInput from "./components/GroupMessageInput";
+import {API_URL} from "./config.js"
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -25,7 +26,8 @@ function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
 
-    if (urlParams.get('googleLogin')) {
+    if (urlParams.get('googleLogin')) 
+    {
       const accessToken = urlParams.get('accessToken');
       const refreshToken = urlParams.get('refreshToken');
       const userStr = urlParams.get('user');
@@ -38,7 +40,7 @@ function App() {
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
 
-          fetch('http://localhost:3000/api/v1/users/presence', {
+          fetch(`${API_URL}/api/v1/users/presence`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -71,7 +73,7 @@ function App() {
       const accessToken = localStorage.getItem('accessToken');
       const headers = accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}
       
-      const response = await fetch('http://localhost:3000/api/v1/users/me', {
+      const response = await fetch(`${API_URL}/api/v1/users/me`, {
         method: 'GET',
         headers: headers,
         credentials: "include"
@@ -84,7 +86,7 @@ function App() {
         setCurrentUser(data.data.user);
         JoinRoom(data.data.user._id);
         
-        await fetch('http://localhost:3000/api/v1/users/presence', {
+        await fetch(`${API_URL}/api/v1/users/presence`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -100,7 +102,7 @@ function App() {
       const refreshToken = localStorage.getItem('refreshToken');
       if (refreshToken) 
       {
-        const refreshResponse = await fetch('http://localhost:3000/api/v1/auth/refresh-token', {
+        const refreshResponse = await fetch(`${API_URL}/api/v1/auth/refresh-token`, {
           method: 'GET',
           headers: { 'Authorization': `Bearer ${refreshToken}` },
           credentials: "include"
@@ -111,7 +113,7 @@ function App() {
           localStorage.setItem('accessToken', refreshData.data.accessToken);
           localStorage.setItem('refreshToken', refreshData.data.refreshToken);
           
-          const newResponse = await fetch('http://localhost:3000/api/v1/users/me', {
+          const newResponse = await fetch(`${API_URL}/api/v1/users/me`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${refreshData.data.accessToken}` },
             credentials: "include"
@@ -122,7 +124,7 @@ function App() {
             setCurrentUser(newData.data.user);
             JoinRoom(newData.data.user._id);
             
-            await fetch('http://localhost:3000/api/v1/users/presence', {
+            await fetch(`${API_URL}/api/v1/users/presence`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -148,7 +150,7 @@ function App() {
       const accessToken = localStorage.getItem('accessToken');
       
       if (accessToken && currentUser) {
-        await fetch('http://localhost:3000/api/v1/users/presence', {
+        await fetch(`${API_URL}/api/v1/users/presence`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -160,7 +162,7 @@ function App() {
 
         emitUserOffline(currentUser._id, new Date())
 
-        await fetch('http://localhost:3000/api/v1/auth/logout', {
+        await fetch(`${API_URL}/api/v1/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`

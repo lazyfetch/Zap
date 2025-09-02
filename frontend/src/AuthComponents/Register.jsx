@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import config from '../config.js';
 
 const Register = ({ onShowLogin }) => {
   const [formData, setFormData] = useState({
@@ -29,7 +30,7 @@ const Register = ({ onShowLogin }) => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3000/api/v1/auth/register', {
+      const response = await fetch(`${config.API_URL}/api/v1/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -47,7 +48,7 @@ const Register = ({ onShowLogin }) => {
       } 
       else 
       {
-        onShowLogin()
+        onShowLogin();
       }
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -59,7 +60,7 @@ const Register = ({ onShowLogin }) => {
   };
 
   const handleGoogleSignup = () => {
-    window.location.href = 'http://localhost:3000/api/v1/auth/google';
+    window.location.href = `${config.API_URL}/api/v1/auth/google`;
   };
 
   return (

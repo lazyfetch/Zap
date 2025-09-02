@@ -23,7 +23,8 @@ export default function FileMessageBubble({ fileName, fileUrl, fileSize, self, t
   }
 
   const handleDownload = async () => {
-    try {
+    try 
+    {
       const response = await fetch(fileUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -34,7 +35,9 @@ export default function FileMessageBubble({ fileName, fileUrl, fileSize, self, t
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+    } 
+    catch (error) 
+    {
       console.error('Download failed:', error);
       window.open(fileUrl, '_blank');
     }

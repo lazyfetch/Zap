@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FiEdit2, FiX } from "react-icons/fi";
+import { API_URL } from "../config.js";
 
 export default function GroupDetailsModal({ group, currentUser, onClose, onGroupUpdated }) {
   const [editMode, setEditMode] = useState(false);
@@ -13,7 +14,7 @@ export default function GroupDetailsModal({ group, currentUser, onClose, onGroup
 
     const handleSave = async () => {
         const accessToken = localStorage.getItem("accessToken");
-        const response = await fetch("http://localhost:3000/api/v1/group/update-group", {
+        const response = await fetch(`${API_URL}/api/v1/group/update-group`, {
             method: "PATCH",
             credentials: "include",
             headers: {
@@ -38,7 +39,7 @@ export default function GroupDetailsModal({ group, currentUser, onClose, onGroup
 
     const handleLeave = async () => {
         const accessToken = localStorage.getItem("accessToken");
-        const response = await fetch("http://localhost:3000/api/v1/group/leave-group", {
+        const response = await fetch(`${API_URL}/api/v1/group/leave-group`, {
             method: "POST",
             credentials: "include",
             headers: {
@@ -62,7 +63,7 @@ export default function GroupDetailsModal({ group, currentUser, onClose, onGroup
 
     const handleDelete = async () => {
         const accessToken = localStorage.getItem("accessToken");
-        const response = await fetch("http://localhost:3000/api/v1/group/delete", {
+        const response = await fetch(`${API_URL}/api/v1/group/delete`, {
             method: "DELETE",
             credentials: "include",
             headers: {

@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { ClientSocket, TypingStarted, TypingStopped } from "../ClientSocket/ClientSocket.jsx";
 import { FiSend, FiSmile, FiPaperclip, FiMic } from "react-icons/fi";
+import {API_URL} from "../config.js"
 
 export default function MessageInput({ selectedUser, currentUser }) {
   const [message, setMessage] = useState("");
@@ -28,7 +29,7 @@ export default function MessageInput({ selectedUser, currentUser }) {
           const formData=new FormData()
           formData.append("file",selectedFile)
           const accessToken=localStorage.getItem("accessToken")
-          const response=await fetch("http://localhost:3000/api/v1/file/upload-file",{
+          const response=await fetch(`${API_URL}/api/v1/file/upload-file`,{
             method:'POST',
             headers: {
                 Authorization: `Bearer ${accessToken}`,

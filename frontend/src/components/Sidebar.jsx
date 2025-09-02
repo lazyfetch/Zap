@@ -3,6 +3,7 @@ import { JoinRoom } from "../ClientSocket/ClientSocket";
 import { FiSearch, FiSettings, FiUsers, FiPlus } from "react-icons/fi"
 import CreateGroupModal from "./CreateGroupModal.jsx"
 import Settings from "./Settings.jsx";
+import {API_URL} from "../config.js"
 
 export default function Sidebar({ selectedUserId, onSelectUser, currentUser, setSelectedGroup, onUserUpdate, onLogout }) {
   const [users, setUsers] = useState([]);
@@ -14,7 +15,7 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser, set
   
   const getUsers = async () => {
     const accessToken = localStorage.getItem('accessToken');  
-    const response=await fetch('http://localhost:3000/api/v1/users/list',{
+    const response=await fetch(`${API_URL}/api/v1/users/list`,{
       method:'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -35,7 +36,7 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser, set
 
   const getGroups = async () => {
     const accessToken = localStorage.getItem('accessToken');
-    const response = await fetch('http://localhost:3000/api/v1/group/groups', {  
+    const response = await fetch(`${API_URL}/api/v1/group/groups`, {  
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`
@@ -52,7 +53,7 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser, set
 
   const getAllGroups=async()=>{
     const accessToken = localStorage.getItem('accessToken');
-    const response=await fetch('http://localhost:3000/api/v1/group/all',{
+    const response=await fetch(`${API_URL}/api/v1/group/all`,{
       method:'GET',
       headers:{
         'Authorization':`Bearer ${accessToken}`
@@ -77,7 +78,7 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser, set
 
   const JoinGroup=async (groupId)=>{
     const accessToken = localStorage.getItem('accessToken');
-    const response = await fetch('http://localhost:3000/api/v1/group/add-member', {  
+    const response = await fetch(`${API_URL}/api/v1/group/add-member`, {  
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -174,7 +175,7 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser, set
                 <img
                   src={user.avatar && user.avatar !== "/avatars/default.png" 
                     ? user.avatar 
-                    : "http://localhost:3000/avatars/default.png"
+                    : `${API_URL}/avatars/default.png`
                   }
                   alt={user.username}
                   className="w-10 h-10 rounded-full object-cover"
@@ -266,7 +267,6 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser, set
                     <li
                       key={group._id}
                       className="flex items-center px-4 py-3 hover:bg-gray-900 cursor-pointer transition-all"
-                      // You can add a join button here
                     >
                       <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
                         {getInitials(group.name)}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import {API_URL} from "../config.js"
 
 export default function CreateGroupModal({ currentUser, onClose, onGroupCreated }) {
   const [name, setName] = useState("");
@@ -12,7 +13,7 @@ export default function CreateGroupModal({ currentUser, onClose, onGroupCreated 
     setIsLoading(true);
     const accessToken = localStorage.getItem('accessToken');
     try {
-      const response = await fetch('http://localhost:3000/api/v1/group/create-group', {
+      const response = await fetch(`${API_URL}/api/v1/group/create-group`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
