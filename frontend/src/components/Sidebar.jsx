@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import { JoinRoom } from "../ClientSocket/ClientSocket";
 import { FiSearch, FiSettings, FiUsers, FiPlus } from "react-icons/fi"
 import CreateGroupModal from "./CreateGroupModal.jsx"
+import Settings from "./Settings.jsx";
 
-export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setSelectedGroup }) {
+export default function Sidebar({ selectedUserId, onSelectUser, currentUser, setSelectedGroup, onUserUpdate, onLogout }) {
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]); 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("chats")
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
-  const [AllGroups,setAllGroups]=useState([])
+  const [AllGroups, setAllGroups] = useState([])
   
   const getUsers = async () => {
     const accessToken = localStorage.getItem('accessToken');  
@@ -170,7 +171,22 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setS
               }}
             >
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
+                <img
+                  src={user.avatar && user.avatar !== "/avatars/default.png" 
+                    ? user.avatar 
+                    : "http://localhost:3000/avatars/default.png"
+                  }
+                  alt={user.username}
+                  className="w-10 h-10 rounded-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+                <div 
+                  className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium"
+                  style={{ display: 'none' }}
+                >
                   {getInitials(user.username)}
                 </div>
                 <span
@@ -186,13 +202,13 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setS
                 </div>
               </div>
               <div className="text-xs text-gray-500">
-              {user.online 
-                ? "now" 
-                : user.lastSeen 
-                  ? new Date(user.lastSeen).toLocaleDateString('en-GB')
-                  : new Date(user.createdAt).toLocaleDateString('en-GB')
-              }
-            </div>
+                {user.online 
+                  ? "now" 
+                  : user.lastSeen 
+                    ? new Date(user.lastSeen).toLocaleDateString('en-GB')
+                    : new Date(user.createdAt).toLocaleDateString('en-GB')
+                }
+              </div>
             </li>
           ))}
         </ul>
@@ -282,8 +298,12 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setS
       )}
 
       {activeTab === 'settings' && (
-        <div className="flex-1 p-4">
-          <p className="text-gray-400">Settings coming soon...</p>
+        <div className="flex-1 overflow-hidden">
+          <Settings 
+            currentUser={currentUser} 
+            onUserUpdate={onUserUpdate}
+            onLogout={onLogout}
+          />
         </div>
       )}
 

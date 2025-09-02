@@ -22,6 +22,7 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
     online: selectedUser.online || false,
     lastSeen: selectedUser.lastSeen || null
   });
+  const [avatarError, setAvatarError] = useState(false);
 
   const fetchUserStatus = async () => {
     try 
@@ -342,13 +343,35 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
     });
   }, [selectedUser._id]);
 
+  const handleAvatarError = () => {
+    setAvatarError(true);
+  }
+
+  const handleAvatarLoad = () => {
+    setAvatarError(false);
+  }
+
+  useEffect(() => {
+    setAvatarError(false)
+  }, [selectedUser._id])
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-black">
       <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
         <div className="flex items-center">
-          <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
-            {selectedUser.username.substring(0, 2).toUpperCase()}
-          </div>
+          {selectedUser.avatar && !avatarError ? (
+            <img
+              src={selectedUser.avatar}
+              alt={selectedUser.username}
+              className="w-10 h-10 rounded-full object-cover"
+              onError={handleAvatarError}
+              onLoad={handleAvatarLoad}
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
+              {selectedUser.username.substring(0, 2).toUpperCase()}
+            </div>
+          )}
           <div className="ml-3">
             <div className="font-medium">{selectedUser.username}</div>
             <div className="text-xs text-gray-400 flex items-center">
@@ -362,9 +385,6 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
           </div>
         </div>
         <div className="flex space-x-3">
-          <button className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors">
-            <FiPhone size={20} />
-          </button>
           <button
             className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors"
             onClick={() => {

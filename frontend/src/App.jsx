@@ -168,6 +168,10 @@ function App() {
     document.removeEventListener("mouseup", handleMouseUp);
   };
 
+  const handleUserUpdate = (updatedUser) => {
+    setCurrentUser(updatedUser);
+  };
+
   if (!currentUser) {
     return showRegister
       ? <Register onShowLogin={() => setShowRegister(false)} />
@@ -195,6 +199,8 @@ function App() {
           onSelectUser={setSelectedUser}
           currentUser={currentUser}
           setSelectedGroup={setSelectedGroup}
+          onUserUpdate={handleUserUpdate}
+          onLogout={handleLogout}
         />
       </div>
 
@@ -229,8 +235,8 @@ function App() {
             <div className="w-24 h-24 rounded-full bg-gray-900 flex items-center justify-center mb-4">
               <span className="text-3xl">👋</span>
             </div>
-            <p className="text-xl">Select a conversation</p>
-            <p className="mt-2 text-sm">Choose a contact to start chatting</p>
+            <p className="text-xl text-gray-300">Welcome, {currentUser.username}!</p>
+            <p className="mt-2 text-sm">Select a contact to start chatting</p>
           </div>
         )}
       </div>
