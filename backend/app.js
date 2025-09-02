@@ -4,9 +4,12 @@ dotenv.config()
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import session from "express-session";
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import { Message } from "./src/models/message.model.js";
+import passport from "./src/middleware/passport.js";
+
 const USE_COOKIES = process.env.USE_COOKIES === "true";
 
 const app = express();
@@ -22,12 +25,25 @@ const io = new Server(server,{
 console.log(process.env.CORS_ORIGIN)
 app.use(cors({
   origin: process.env.CORS_ORIGIN,
-  credentials: USE_COOKIES, // only true if using cookies
+  credentials: USE_COOKIES,
 }));
 
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(cookieParser());
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false,
+    maxAge: 24 * 60 * 60 * 1000 
+  }
+}))
+
+app.use(passport.initialize())
+app.use(passport.session())
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Credentials', 'true');

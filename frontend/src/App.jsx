@@ -4,6 +4,7 @@ import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
 import Login from "./AuthComponents/Login";
 import Register from "./AuthComponents/Register"; 
+import UsernameSelection from "./AuthComponents/UsernameSelection";
 import { JoinRoom, emitUserOnline, emitUserOffline } from "./ClientSocket/ClientSocket";
 import { FiLogOut } from 'react-icons/fi';
 import GroupChatWindow from "./components/GroupChatWindow";
@@ -14,11 +15,56 @@ function App() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showRegister, setShowRegister] = useState(false); 
+  const [showUsernameSelection, setShowUsernameSelection] = useState(false); 
   const [sidebarWidth, setSidebarWidth] = useState(288); 
   const [groupMessagesRefreshKey, setGroupMessagesRefreshKey] = useState(0);
   const sidebarMin = 275;
   const sidebarMax = 500;
   const resizing = useRef(false);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    if (urlParams.get('googleLogin')) {
+      const accessToken = urlParams.get('accessToken');
+      const refreshToken = urlParams.get('refreshToken');
+      const userStr = urlParams.get('user');
+      
+      if (accessToken && refreshToken && userStr) 
+      {
+        try 
+        {
+          const user = JSON.parse(decodeURIComponent(userStr));
+          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem('refreshToken', refreshToken);
+
+          fetch('http://localhost:3000/api/v1/users/presence', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({ online: true })
+          });
+
+          JoinRoom(user._id);
+          emitUserOnline(user._id);
+          setCurrentUser(user);
+
+          window.history.replaceState({}, document.title, "/");
+        } 
+        catch (error) 
+        {
+          console.error('Error processing Google login:', error);
+        }
+      }
+    }
+
+    if (urlParams.get('showUsernameSelection')) 
+    {
+      setShowUsernameSelection(true);
+    }
+  }, []);
 
   const checkAuth = async () => {
     try {
@@ -138,12 +184,17 @@ function App() {
   };
 
   useEffect(() => {
-    checkAuth()
-  }, [])
+    if (!showUsernameSelection) 
+    {
+      checkAuth()
+    }
+  }, [showUsernameSelection])
   
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
+    setShowUsernameSelection(false)
     JoinRoom(user._id); 
+    window.history.replaceState({}, document.title, "/")
   };
 
   const handleMouseDown = () => {
@@ -171,6 +222,11 @@ function App() {
   const handleUserUpdate = (updatedUser) => {
     setCurrentUser(updatedUser);
   };
+
+  if (showUsernameSelection) 
+  {
+    return <UsernameSelection onLoginSuccess={handleLoginSuccess} />
+  }
 
   if (!currentUser) {
     return showRegister

@@ -23,7 +23,7 @@ const verifyLogin = async(req, res, next) => {
     }
     
     const decodedUser = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
-    const user = await User.findById(decodedUser.userId).select("-password -refreshToken");
+    const user = await User.findById(decodedUser._id).select("-password -refreshToken");
     
     if (!user) {
       throw new ApiError(401, "User not logged in");

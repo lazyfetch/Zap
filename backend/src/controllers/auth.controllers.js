@@ -1,10 +1,8 @@
-import ApiError from "../utils/ApiError.js"
-import ApiSuccess from "../utils/ApiSuccess.js"
-import { User } from "../models/user.model.js"
-import bcrypt from "bcrypt"
-import dotenv from "dotenv"
-dotenv.config()
-import jwt from "jsonwebtoken"
+import bcrypt from "bcrypt";
+import  ApiError  from "../utils/ApiError.js";
+import ApiSuccess  from "../utils/ApiSuccess.js";
+import { User } from "../models/user.model.js";
+import jwt from "jsonwebtoken";
 
 const options = {
   httpOnly: true,
@@ -15,36 +13,36 @@ const options = {
 };
 
 const generateAccessToken = (userId) => {
-    return jwt.sign({userId}, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: process.env.ACCESS_TOKEN_EXPIRATION
+    return jwt.sign({_id: userId}, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRY
     });
 }
 
 const generateRefreshToken = (userId) => {
-    return jwt.sign({userId}, process.env.REFRESH_TOKEN_SECRET, {
-        expiresIn: process.env.REFRESH_TOKEN_EXPIRATION
+    return jwt.sign({_id: userId}, process.env.REFRESH_TOKEN_SECRET, {
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRY
     });
 }
 
 const USE_COOKIES = process.env.USE_COOKIES === "true";
 
-const registerUser = async(req,res,next)=>
-{
+const registerUser = async (req, res, next) => {
     try 
     {
-        const {username, email, password} = req.body
+        const { username, email, password } = req.body;
         
-        if(!username || !email || !password) 
+        if (!username || !email || !password) 
         {
-            throw new ApiError(400, "All fields are required")
+            throw new ApiError(400, "All fields are required");
         }
+        
         const existingUser = await User.findOne({
-            $or: [{username}, {email}]
-        })
-    
-        if(existingUser)
+            $or: [{ username }, { email }]
+        });
+        
+        if (existingUser) 
         {
-            throw new ApiError(409, "User already exists")
+            throw new ApiError(409, "User with username or email already exists");
         }
         
         const saltRounds = 10
@@ -186,7 +184,8 @@ const refreshTokens = async(req, res, next) => {
         res.clearCookie("refreshToken", options);
         throw new ApiError(401, "Invalid request")
     }
-    const user=await User.findById(decodedUser.userId)
+    
+    const user = await User.findById(decodedUser._id)
     if(!user)
     {
         throw new ApiError(400, "User not found")
@@ -198,9 +197,9 @@ const refreshTokens = async(req, res, next) => {
         res.clearCookie("refreshToken", options);
         throw new ApiError(401, "Refresh token does not match");
     }
+    
     const newRefreshToken = generateRefreshToken(user._id)
     const newAccessToken = generateAccessToken(user._id)
-
 
     if(!newRefreshToken || !newAccessToken)
     {
@@ -227,9 +226,9 @@ const refreshTokens = async(req, res, next) => {
             new ApiSuccess(200, "Tokens refreshed successfully", {
             refreshToken: newRefreshToken,
             accessToken: newAccessToken
-    })
-  );
-}
+        })
+      );
+    }
 } 
 catch (error) 
 {
