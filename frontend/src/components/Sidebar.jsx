@@ -185,7 +185,14 @@ export default function Sidebar({ selectedUserId, onSelectUser, currentUser,setS
                   {user.online ? "Online" : "Offline"}
                 </div>
               </div>
-              <div className="text-xs text-gray-500">12:34</div>
+              <div className="text-xs text-gray-500">
+              {user.online 
+                ? "now" 
+                : user.lastSeen 
+                  ? new Date(user.lastSeen).toLocaleDateString('en-GB')
+                  : new Date(user.createdAt).toLocaleDateString('en-GB')
+              }
+            </div>
             </li>
           ))}
         </ul>

@@ -176,6 +176,13 @@ io.on('connection', (socket) => {
   socket.on('read group message', ({ sender, groupId, messageIds }) => {
     io.to(groupId).emit('read group message', { sender, messageIds })
   })
+  socket.on('user online', ({ userId }) => {
+    io.emit('user online', { userId })
+  })
+  
+  socket.on('user offline', ({ userId, lastSeen }) => {
+    io.emit('user offline', { userId, lastSeen })
+  })
 })
 
 

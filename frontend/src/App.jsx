@@ -4,7 +4,7 @@ import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
 import Login from "./AuthComponents/Login";
 import Register from "./AuthComponents/Register"; 
-import { JoinRoom } from "./ClientSocket/ClientSocket";
+import { JoinRoom, emitUserOnline, emitUserOffline } from "./ClientSocket/ClientSocket";
 import { FiLogOut } from 'react-icons/fi';
 import GroupChatWindow from "./components/GroupChatWindow";
 import GroupMessageInput from "./components/GroupMessageInput";
@@ -20,68 +20,133 @@ function App() {
   const sidebarMax = 500;
   const resizing = useRef(false);
 
-  const checkAuth=async()=>{
-      try {
-        const accessToken = localStorage.getItem('accessToken');
-        const headers = accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {};
+  const checkAuth = async () => {
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const headers = accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}
+      
+      const response = await fetch('http://localhost:3000/api/v1/users/me', {
+        method: 'GET',
+        headers: headers,
+        credentials: "include"
+      });
+
+      const data = await response.json()
+
+      if (data.success) 
+      {
+        setCurrentUser(data.data.user);
+        JoinRoom(data.data.user._id);
         
-        const response = await fetch('http://localhost:3000/api/v1/users/me', {
+        await fetch('http://localhost:3000/api/v1/users/presence', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          credentials: 'include',
+          body: JSON.stringify({ online: true })
+        });
+        emitUserOnline(data.data.user._id)
+        return
+      }
+
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) 
+      {
+        const refreshResponse = await fetch('http://localhost:3000/api/v1/auth/refresh-token', {
           method: 'GET',
-          headers: headers,
+          headers: { 'Authorization': `Bearer ${refreshToken}` },
           credentials: "include"
         });
-  
-        const data = await response.json()
-  
-        if(data.success)
-        {
-          setCurrentUser(data.data.user);
-          JoinRoom(data.data.user._id); 
-          return;
-        }
-  
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          const refreshResponse = await fetch('http://localhost:3000/api/v1/auth/refresh-token', {
+
+        const refreshData = await refreshResponse.json();
+        if (refreshData.success) {
+          localStorage.setItem('accessToken', refreshData.data.accessToken);
+          localStorage.setItem('refreshToken', refreshData.data.refreshToken);
+          
+          const newResponse = await fetch('http://localhost:3000/api/v1/users/me', {
             method: 'GET',
-            headers: { 'Authorization': `Bearer ${refreshToken}` },
+            headers: { 'Authorization': `Bearer ${refreshData.data.accessToken}` },
             credentials: "include"
           });
-  
-          const refreshData = await refreshResponse.json();
-          if (refreshData.success) {
 
-            localStorage.setItem('accessToken', refreshData.data.accessToken);
-            localStorage.setItem('refreshToken', refreshData.data.refreshToken);
+          const newData = await newResponse.json();
+          if (newData.success) {
+            setCurrentUser(newData.data.user);
+            JoinRoom(newData.data.user._id);
             
-            const newResponse = await fetch('http://localhost:3000/api/v1/users/me', {
-              method: 'GET',
-              headers: { 'Authorization': `Bearer ${refreshData.data.accessToken}` },
-              credentials: "include"
+            await fetch('http://localhost:3000/api/v1/users/presence', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${refreshData.data.accessToken}`
+              },
+              credentials: 'include',
+              body: JSON.stringify({ online: true })
             });
-  
-            const newData = await newResponse.json();
-            if (newData.success) {
-              setCurrentUser(newData.data.user);
-              JoinRoom(newData.data.user._id);
-            }
+            emitUserOnline(newData.data.user._id)
           }
         }
-      } 
-      catch (error) 
-      {
-        console.log(error)
       }
+    } 
+    catch (error) 
+    {
+      console.log(error)
+    }
   }
-  useEffect(()=>{
+
+  const handleLogout = async () => {
+    try 
+    {
+      const accessToken = localStorage.getItem('accessToken');
+      
+      if (accessToken && currentUser) {
+        await fetch('http://localhost:3000/api/v1/users/presence', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          credentials: 'include',
+          body: JSON.stringify({ online: false })
+        });
+
+        emitUserOffline(currentUser._id, new Date())
+
+        await fetch('http://localhost:3000/api/v1/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          },
+          credentials: 'include'
+        });
+      }
+    } 
+    catch (error) 
+    {
+      console.error('Logout error:', error);
+    } 
+    finally 
+    {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+      setCurrentUser(null)
+      setSelectedUser(null)
+      setSelectedGroup(null)
+    }
+  };
+
+  useEffect(() => {
     checkAuth()
-  },[])
+  }, [])
+  
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     JoinRoom(user._id); 
   };
 
-  const handleMouseDown = (event) => {
+  const handleMouseDown = () => {
     resizing.current = true;
     document.body.style.cursor = "col-resize";
     document.addEventListener("mousemove", handleMouseMove);
@@ -103,7 +168,6 @@ function App() {
     document.removeEventListener("mouseup", handleMouseUp);
   };
 
-
   if (!currentUser) {
     return showRegister
       ? <Register onShowLogin={() => setShowRegister(false)} />
@@ -119,12 +183,9 @@ function App() {
         <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
           <h1 className="text-xl font-bold text-amber-400">Zap Chat</h1>
           <button
-            onClick={() => {
-              localStorage.removeItem('accessToken');
-              localStorage.removeItem('refreshToken');
-              setCurrentUser(null);
-            }}
-            className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400"
+            onClick={handleLogout}
+            className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors"
+            title="Logout"
           >
             <FiLogOut size={20} />
           </button>

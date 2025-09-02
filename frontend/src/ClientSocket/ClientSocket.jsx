@@ -119,6 +119,22 @@ const onReadGroupMessages = (callback) => {
         callback(data)
     })
 }
+const emitUserOnline = (userId) => {
+    socket.emit('user online', { userId })
+}
 
+const emitUserOffline = (userId, lastSeen) => {
+    socket.emit('user offline', { userId, lastSeen })
+}
 
-export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator,JoinGroupRoom,SendGroupMessage,OnGroupMessage,deleteMessage,onDeleteMessage,deleteGroupMessage,onDeleteGroupMessage,readMessages,onReadMessages,readGroupMessages,onReadGroupMessages}
+const onUserOnline = (callback) => {
+    socket.off('user online')
+    socket.on('user online', callback)
+}
+
+const onUserOffline = (callback) => {
+    socket.off('user offline')
+    socket.on('user offline', callback)
+}
+
+export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator,JoinGroupRoom,SendGroupMessage,OnGroupMessage,deleteMessage,onDeleteMessage,deleteGroupMessage,onDeleteGroupMessage,readMessages,onReadMessages,readGroupMessages,onReadGroupMessages,onUserOffline,onUserOnline,emitUserOffline,emitUserOnline}

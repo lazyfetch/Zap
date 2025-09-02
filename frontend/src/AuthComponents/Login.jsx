@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { JoinRoom } from '../ClientSocket/ClientSocket';
+import { JoinRoom, emitUserOnline } from '../ClientSocket/ClientSocket';
 
 const Login = ({ onLoginSuccess, onShowRegister }) => {
   const [formData, setFormData] = useState({
@@ -42,9 +42,20 @@ const Login = ({ onLoginSuccess, onShowRegister }) => {
       }
       else
       {
-        localStorage.setItem('accessToken', data.data.accessToken)
-        localStorage.setItem('refreshToken', data.data.refreshToken)
-        JoinRoom(data.data.user._id);
+        localStorage.setItem('accessToken', data.data.accessToken);
+        localStorage.setItem('refreshToken', data.data.refreshToken);
+        
+        await fetch('http://localhost:3000/api/v1/users/presence', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${data.data.accessToken}`
+            },
+            body: JSON.stringify({ online: true })
+        });
+
+        JoinRoom(data.data.user._id)
+        emitUserOnline(data.data.user._id)
         onLoginSuccess(data.data.user)
       }
       

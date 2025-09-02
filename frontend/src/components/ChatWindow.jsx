@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator, deleteMessage, onDeleteMessage, readMessages, onReadMessages } from "../ClientSocket/ClientSocket.jsx";
+import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator, deleteMessage, onDeleteMessage, readMessages, onReadMessages, onUserOnline, onUserOffline } from "../ClientSocket/ClientSocket.jsx";
 import MessageBubble from "./MessageBubble.jsx";
 import TypingBubble from "./TypingBubble.jsx";
 import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
@@ -9,7 +9,7 @@ import IncomingCallModal from "./IncomingCallModal.jsx";
 import FileMessageBubble from "./FileMessageBubble.jsx";
 import socket from "../socket.js";
 
-export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup }) {
+export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup }) {
   const [messages, setMessages] = useState([]);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -18,6 +18,42 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
   const [incomingCallData, setIncomingCallData] = useState(null);
   const [isVideoCallVisible, setIsVideoCallVisible] = useState(false); 
   const [isCaller, setIsCaller] = useState(false);
+  const [userStatus, setUserStatus] = useState({
+    online: selectedUser.online || false,
+    lastSeen: selectedUser.lastSeen || null
+  });
+
+  const fetchUserStatus = async () => {
+    try 
+    {
+      const accessToken = localStorage.getItem('accessToken');
+      const response = await fetch(`http://localhost:3000/api/v1/users/presence/${selectedUser._id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setUserStatus({
+          online: data.data.online,
+          lastSeen: data.data.lastSeen
+        });
+      }
+    } 
+    catch (error) 
+    {
+      console.error('Error fetching user status:', error);
+      setUserStatus({
+        online: selectedUser.online || false,
+        lastSeen: selectedUser.lastSeen || null
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchUserStatus();
+  }, [selectedUser._id]);
 
   const handleAccept = () => {
     setShowIncomingCallModal(false);
@@ -132,8 +168,7 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
   }, [currentUser._id])
 
   useEffect(() => {
-  TypingIndicator(({ sender }) => 
-  {
+  TypingIndicator(({ sender }) => {
     if (sender === selectedUser._id) 
     {
        setIsOtherUserTyping(true)
@@ -198,18 +233,20 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
       })
     }
   }
-  useEffect(()=>{
-    onDeleteMessage((msg)=>{
+  
+  useEffect(() => {
+    onDeleteMessage((msg) => {
       setMessages(prev =>
         prev.filter(m => m._id !== msg._id && m.tempId !== msg.tempId)
       )
     })
   },[])
+  
   const groupMessagesByDate = (messages) => {
     const groups = {};
 
     messages.forEach((msg) => {
-      const date = new Date(msg.createdAt || Date.now()).toLocaleDateString();
+      const date = new Date(msg.createdAt || Date.now()).toLocaleDateString('en-GB')
       if (!groups[date]) {
         groups[date] = [];
       }
@@ -259,6 +296,52 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
 
   const messageGroups = groupMessagesByDate(filteredMessages);
 
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return "Last seen recently";
+    const date = new Date(lastSeen);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+    
+    if (diffInMinutes < 1) 
+    {
+      return "Last seen just now"
+    }
+      
+    if (diffInMinutes < 60)
+    {
+      return `Last seen ${diffInMinutes}m ago`
+    }
+    if (diffInMinutes < 1440)
+    {
+      return `Last seen ${Math.floor(diffInMinutes / 60)}h ago`
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0)
+    
+    if (date >= today) 
+    {
+      return `Last seen today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    } 
+    else 
+    {
+      return `Last seen ${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    }
+  }
+
+  useEffect(() => {
+    onUserOnline(({ userId }) => {
+      if (userId === selectedUser._id) {
+        setUserStatus(prev => ({ ...prev, online: true }));
+      }
+    });
+
+    onUserOffline(({ userId, lastSeen }) => {
+      if (userId === selectedUser._id) {
+        setUserStatus(prev => ({ ...prev, online: false, lastSeen }));
+      }
+    });
+  }, [selectedUser._id]);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-black">
       <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
@@ -268,9 +351,13 @@ export default function ChatWindow({ currentUser, selectedUser,setSelectedGroup 
           </div>
           <div className="ml-3">
             <div className="font-medium">{selectedUser.username}</div>
-            <div className="text-xs text-gray-400">
-              <span className="inline-block h-2 w-2 rounded-full bg-green-500 mr-1"></span>
-              {selectedUser.online ? "Online" : "Offline"}
+            <div className="text-xs text-gray-400 flex items-center">
+              <span 
+                className={`inline-block h-2 w-2 rounded-full mr-1 ${
+                  userStatus.online ? 'bg-green-500' : 'bg-gray-500'
+                }`}
+              ></span>
+              {userStatus.online ? "Online" : formatLastSeen(userStatus.lastSeen)}
             </div>
           </div>
         </div>
