@@ -1,4 +1,8 @@
 import { io } from "socket.io-client"
-const socketServerUrl = import.meta.env.VITE_SOCKET_SERVER_URL
-const socket = io(socketServerUrl)
-export default socket
+import config from './config.js';
+
+const socket = io(config.SOCKET_URL, {
+  transports: ['websocket', 'polling']
+});
+
+export default socket;
