@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble.jsx";
 import { FiUsers } from "react-icons/fi";
-import { JoinGroupRoom, OnGroupMessage} from "../ClientSocket/ClientSocket.jsx";
+import { JoinGroupRoom, OnGroupMessage, ChangeStatus} from "../ClientSocket/ClientSocket.jsx";
 import GroupDetailsModal from "./GroupDetailsModal.jsx";
 import FileMessageBubble from "./FileMessageBubble.jsx";
+import GroupMessageInput from "./GroupMessageInput.jsx";
 
 export default function GroupChatWindow({ currentUser, selectedGroup,setSelectedGroup, refreshKey }) {
   const [messages, setMessages] = useState([]);
@@ -46,12 +47,54 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
 
   useEffect(() => {
     const handleGroupMessage = (msg) => {
-      setMessages((prev) => [...prev, msg]);
+      
+      if (msg && (msg.message || msg.fileData)) {
+        const messageObj = {
+          content: msg.message || (msg.fileData ? msg.fileData.data.originalName : "File attachment"), 
+          tempId: msg.tempId,
+          status: msg.sender === currentUser._id ? "not_delivered" : undefined,
+          sender: msg.sender,
+          roomId: msg.groupId,
+          createdAt: new Date().toISOString()
+        };
+
+        if (msg.fileData) 
+        {
+          messageObj.mediaType = "file";
+          messageObj.mediaUrl = msg.fileData.data.url;
+          messageObj.fileSize = msg.fileData.data.size;
+        }
+
+        setMessages((prev) => [...prev, messageObj]);
+      } 
+      else if (typeof msg === "string") 
+      {
+        setMessages((prev) => [...prev, { content: msg }]);
+      } 
+      else 
+      {
+        setMessages((prev) => [...prev, msg]);
+      }
     };
     OnGroupMessage(handleGroupMessage);
+  }, [selectedGroup._id, currentUser._id])
 
-  },
-  [selectedGroup._id]);
+  useEffect(() => {
+    ChangeStatus((msg) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.tempId == msg.tempId) 
+          {
+            return { ...msg, tempId: m.tempId };
+          } 
+          else 
+          {
+            return m;
+          }
+        })
+      );
+    });
+  }, []);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -130,6 +173,12 @@ export default function GroupChatWindow({ currentUser, selectedGroup,setSelected
         ))}
         <div ref={bottomRef} className="h-1 bg-transparent" />
       </div>
+      
+      <GroupMessageInput 
+        selectedGroup={selectedGroup}
+        currentUser={currentUser}
+      />
+      
       {showGroupDetails && (
         <GroupDetailsModal
           group={selectedGroup}

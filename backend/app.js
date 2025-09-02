@@ -86,7 +86,7 @@ io.on('connection', (socket) => {
   socket.on('chat message', async (msgObj) => {
     io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
 
-    let content = "File attachment"; s
+    let content = "File attachment"; 
     
     if (msgObj.message && msgObj.message.trim() !== "") 
     {

@@ -11,6 +11,10 @@ export default function MessageInput({ selectedUser, currentUser }) {
   const MAX_SIZE=10*1024*1024
   const ALLOWED_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/csv", "application/xml", "text/plain", "image/jpeg", "image/png"]
 
+  const [isSending, setIsSending] = useState(false)
+  const [input, setInput] = useState('')
+  const [file, setFile] = useState(null)
+  
   const handleSend = async(e) => {
     e.preventDefault();
     if (message.trim() === "" && !selectedFile) return
@@ -131,23 +135,18 @@ export default function MessageInput({ selectedUser, currentUser }) {
         />
 
         <button
-          type="button"
-          className="p-2 rounded-md text-gray-500 hover:text-amber-400 hover:bg-gray-900"
-        >
-          <FiMic size={22} />
-        </button>
-
-        <button
           type="submit"
-          className={`p-3 rounded-md ${
-            (message.trim() === "" && !selectedFile)
-              ? "bg-gray-900 text-gray-600"
-              : "bg-black text-amber-400 hover:text-amber-300 border border-amber-900 hover:border-amber-700"
+          className={`p-3 rounded-md transition-colors duration-150 ${
+            isSending
+              ? "bg-gray-900 text-gray-600 cursor-not-allowed"
+              : (message.trim() !== "" || selectedFile)
+                ? "bg-amber-400 text-black hover:bg-amber-500 border border-amber-900 hover:border-amber-700"
+                : "bg-gray-900 text-gray-600"
           }`}
-          disabled={message.trim() === "" && !selectedFile}
+          disabled={isSending || (message.trim() === "" && !selectedFile)}
         >
-          <FiSend size={18} />
-        </button>
+        <FiSend size={18} />
+      </button>
       </form>
     </div>
   );

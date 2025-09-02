@@ -162,11 +162,6 @@ function App() {
               setSelectedGroup={setSelectedGroup}
               refreshKey={groupMessagesRefreshKey}
             />
-            <GroupMessageInput
-              selectedGroup={selectedGroup}
-              currentUser={currentUser}
-              onMessageSent={() => setGroupMessagesRefreshKey(k => k + 1)}
-            />
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
