@@ -71,17 +71,21 @@ function App() {
   const checkAuth = async () => {
     try {
       const accessToken = localStorage.getItem('accessToken');
-      const headers = accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}
+      
+      if (!accessToken) 
+      {
+        return
+      }
       
       const response = await fetch(`${API_URL}/api/v1/users/me`, {
         method: 'GET',
-        headers: headers,
+        headers: { 'Authorization': `Bearer ${accessToken}` },
         credentials: "include"
       });
 
       const data = await response.json()
 
-      if (data.success) 
+      if (response.ok && data.success) 
       {
         setCurrentUser(data.data.user);
         JoinRoom(data.data.user._id);
@@ -99,48 +103,58 @@ function App() {
         return
       }
 
+
       const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) 
+      if (!refreshToken) 
       {
-        const refreshResponse = await fetch(`${API_URL}/api/v1/auth/refresh-token`, {
+        return
+      }
+
+      const refreshResponse = await fetch(`${API_URL}/api/v1/auth/refresh-token`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${refreshToken}` },
+        credentials: "include"
+      });
+
+      const refreshData = await refreshResponse.json();
+      if (refreshResponse.ok && refreshData.success) {
+        localStorage.setItem('accessToken', refreshData.data.accessToken);
+        localStorage.setItem('refreshToken', refreshData.data.refreshToken);
+        
+        const newResponse = await fetch(`${API_URL}/api/v1/users/me`, {
           method: 'GET',
-          headers: { 'Authorization': `Bearer ${refreshToken}` },
+          headers: { 'Authorization': `Bearer ${refreshData.data.accessToken}` },
           credentials: "include"
         });
 
-        const refreshData = await refreshResponse.json();
-        if (refreshData.success) {
-          localStorage.setItem('accessToken', refreshData.data.accessToken);
-          localStorage.setItem('refreshToken', refreshData.data.refreshToken);
+        const newData = await newResponse.json();
+        if (newResponse.ok && newData.success) {
+          setCurrentUser(newData.data.user);
+          JoinRoom(newData.data.user._id);
           
-          const newResponse = await fetch(`${API_URL}/api/v1/users/me`, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${refreshData.data.accessToken}` },
-            credentials: "include"
+          await fetch(`${API_URL}/api/v1/users/presence`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${refreshData.data.accessToken}`
+            },
+            credentials: 'include',
+            body: JSON.stringify({ online: true })
           });
-
-          const newData = await newResponse.json();
-          if (newData.success) {
-            setCurrentUser(newData.data.user);
-            JoinRoom(newData.data.user._id);
-            
-            await fetch(`${API_URL}/api/v1/users/presence`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${refreshData.data.accessToken}`
-              },
-              credentials: 'include',
-              body: JSON.stringify({ online: true })
-            });
-            emitUserOnline(newData.data.user._id)
-          }
+          emitUserOnline(newData.data.user._id);
         }
+      } 
+      else 
+      { 
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
       }
     } 
     catch (error) 
     {
-      console.log(error)
+      console.log('Auth check failed:', error.message);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
     }
   }
 
