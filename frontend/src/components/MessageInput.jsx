@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { ClientSocket, TypingStarted, TypingStopped } from "../ClientSocket/ClientSocket.jsx";
 import { FiSend, FiSmile, FiPaperclip, FiMic } from "react-icons/fi";
 import {API_URL} from "../config.js"
+import EmojiPicker from 'emoji-picker-react';
 
 export default function MessageInput({ selectedUser, currentUser }) {
   const [message, setMessage] = useState("");
@@ -15,7 +16,12 @@ export default function MessageInput({ selectedUser, currentUser }) {
   const [isSending, setIsSending] = useState(false)
   const [input, setInput] = useState('')
   const [file, setFile] = useState(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
+  const onEmojiClick = (emojiObject) => {
+    setMessage(prev => prev + emojiObject.emoji);
+  };
+
   const handleSend = async(e) => {
     e.preventDefault();
     if (message.trim() === "" && !selectedFile) return
@@ -74,7 +80,6 @@ export default function MessageInput({ selectedUser, currentUser }) {
     }
     setSelectedFile(file)
   }
-
   return (
     <div className="border-t border-gray-900 bg-black p-4">
       {errorDialog && (
@@ -89,12 +94,25 @@ export default function MessageInput({ selectedUser, currentUser }) {
         </div>
       )}
       <form onSubmit={handleSend} className="flex items-center gap-2">
+      <div className="relative">
         <button
           type="button"
-          className="p-2 rounded-md text-gray-500 hover:text-amber-400 hover:bg-gray-900"
+          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          className="p-2 text-gray-400 hover:text-amber-400 transition-colors"
         >
-          <FiSmile size={22} />
+          <FiSmile size={20} />
         </button>
+        {showEmojiPicker && (
+          <div className="absolute bottom-full left-0 mb-2 z-50">
+            <EmojiPicker
+              onEmojiClick={onEmojiClick}
+              theme="dark"
+              width={350}
+              height={400}
+            />
+          </div>
+        )}
+      </div>
         {selectedFile && (
           <div className="flex items-center gap-2 mb-2 bg-gray-800 rounded px-3 py-1">
             <span className="text-sm text-amber-300 truncate max-w-[160px]">{selectedFile.name}</span>

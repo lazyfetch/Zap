@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChangeStatus, EmitMessage, TypingIndicator,StopTypingIndicator, deleteMessage, onDeleteMessage, readMessages, onReadMessages, onUserOnline, onUserOffline } from "../ClientSocket/ClientSocket.jsx";
 import MessageBubble from "./MessageBubble.jsx";
 import TypingBubble from "./TypingBubble.jsx";
-import { FiPhone, FiVideo, FiMoreVertical } from "react-icons/fi";
+import { FiPhone, FiVideo, FiMoreVertical,FiTrash2 } from "react-icons/fi";
 import VideoCall from "./VideoCall.jsx";
 import { StartCall, ReceiveCall, receiveEndCall, sendEndCall,sendRejectCall } from "../webRTC/webRTCSockets.js"; 
 import IncomingCallModal from "./IncomingCallModal.jsx";
@@ -24,6 +24,50 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
     lastSeen: selectedUser.lastSeen || null
   });
   const [avatarError, setAvatarError] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const handleClearChat = async () => {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete all messages with ${selectedUser.username}? This action cannot be undone.`
+  );
+  
+  if (!confirmed) return;
+
+  try 
+  {
+    const accessToken = localStorage.getItem("accessToken");
+    const response = await fetch(`${API_URL}/api/v1/users/clear-chat`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          userId1: currentUser._id,
+          userId2: selectedUser._id
+        })
+      });
+
+      const data = await response.json();
+    if (data.success) 
+    {
+      setMessages([]); // Clear local messages
+      alert('Chat cleared successfully!');
+    } 
+    else 
+    {
+      alert(data.message || 'Failed to clear chat');
+    }
+  } 
+  catch (error) 
+  {
+    console.error('Error clearing chat:', error);
+    alert('Error clearing chat');
+  }
+    setShowDropdown(false);
+  }
+
 
   const fetchUserStatus = async () => {
     try 
@@ -170,14 +214,14 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
   }, [currentUser._id])
 
   useEffect(() => {
-  TypingIndicator(({ sender }) => {
-    if (sender === selectedUser._id) 
+  TypingIndicator(({ sender,receiver }) => {
+    if (sender === selectedUser._id && receiver === currentUser._id) 
     {
        setIsOtherUserTyping(true)
     }
   })
-  StopTypingIndicator(({ sender }) => {
-    if (sender === selectedUser._id) 
+  StopTypingIndicator(({ sender,receiver }) => {
+    if (sender === selectedUser._id && receiver === currentUser._id) 
     {
       setIsOtherUserTyping(false)
     }
@@ -276,6 +320,8 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
           body: JSON.stringify({ messageIds }),
         }).then(() => {
           readMessages(currentUser._id, selectedUser._id, messageIds)
+        }).catch(error => {
+          console.error('Error marking messages as read:', error);
         });
       }
     }
@@ -396,16 +442,31 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
           >
             <FiVideo size={20} />
           </button>
-          <button className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-white transition-colors">
+          <div className="relative">
+          <button 
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-white transition-colors"
+          >
             <FiMoreVertical size={20} />
           </button>
-        </div>
-      </div>
-
-      <div
-        ref={messagesContainerRef}
-        className="flex-1 p-4 overflow-y-auto bg-black custom-scrollbar"
-      >
+                {showDropdown && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 z-10">
+                    <button
+                        onClick={handleClearChat}
+                        className="w-full px-4 py-3 text-left text-red-400 hover:bg-gray-700 rounded-lg flex items-center transition-colors"
+                    >
+                  <FiTrash2 className="mr-3" size={16} />
+                        Clear Chat
+                  </button>
+                  </div>
+                )}
+                </div>
+                </div>
+              </div>
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 p-4 overflow-y-auto bg-black custom-scrollbar"
+          >
         {Object.entries(messageGroups).map(([date, msgs]) => (
           <div key={date} className="mb-6">
             <div className="flex justify-center mb-4">

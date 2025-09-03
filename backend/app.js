@@ -60,11 +60,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('stop typing', ({ sender, receiver }) => {
-    io.to(receiver).emit('stop typing', { sender });
-  })
-
-  socket.on('read', ({ sender, receiver }) => {
-    io.to(receiver).emit('read', { sender });
+    io.to(receiver).emit('stop typing', { sender,receiver});
   })
 
   socket.on('start call', ({ sender, receiver }) => {

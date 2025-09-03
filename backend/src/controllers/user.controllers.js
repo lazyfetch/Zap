@@ -1,8 +1,10 @@
 import { User } from "../models/user.model.js";
+import { Message } from "../models/message.model.js";
 import ApiSuccess from "../utils/ApiSuccess.js";
 import ApiError from "../utils/ApiError.js";
 import { uploadCloudinary } from "../cloudinary.js";
 import fs from "fs";
+import bcrypt from "bcrypt";
 
 const LoginCheck = async (req, res) => {
   const user = req.user;
@@ -176,4 +178,29 @@ const changeAvatar = async (req, res, next) => {
   }
 }
 
-export { LoginCheck, UsersList, updatePresence, getPresence,changeUsername,changePassword,deleteAccount,changeAvatar }
+const clearChat = async (req, res, next) => {
+  try 
+  {
+    const { userId1, userId2 } = req.body;
+    
+    if (!userId1 || !userId2) 
+    {
+      throw new ApiError(400, "Both user IDs are required");
+    }
+    
+    const result = await Message.deleteMany({
+      $or: [
+        { sender: userId1, receiver: userId2 },
+        { sender: userId2, receiver: userId1 }
+      ]
+    });
+    
+    return res.status(200).json(new ApiSuccess(200, `Deleted ${result.deletedCount} messages`, { deletedCount: result.deletedCount }))
+  } 
+  catch (error) 
+  {
+    return next(error)
+  }
+}
+
+export { LoginCheck, UsersList, updatePresence, getPresence, changeUsername, changePassword, deleteAccount, changeAvatar, clearChat }
