@@ -214,18 +214,22 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
   }, [currentUser._id])
 
   useEffect(() => {
-  TypingIndicator(({ sender,receiver }) => {
-    if (sender === selectedUser._id && receiver === currentUser._id) 
-    {
-       setIsOtherUserTyping(true)
-    }
-  })
-  StopTypingIndicator(({ sender,receiver }) => {
-    if (sender === selectedUser._id && receiver === currentUser._id) 
-    {
-      setIsOtherUserTyping(false)
-    }
-  });
+    setIsOtherUserTyping(false);
+  }, [selectedUser._id]);
+
+  useEffect(() => {
+    TypingIndicator(({ sender,receiver }) => {
+      if (sender === selectedUser._id && receiver === currentUser._id) 
+      {
+        setIsOtherUserTyping(true)
+      }
+    })
+    StopTypingIndicator(({ sender,receiver }) => {
+      if (sender === selectedUser._id && receiver === currentUser._id) 
+      {
+        setIsOtherUserTyping(false)
+      }
+    });
   }, [selectedUser._id]);
 
   useEffect(() => {
