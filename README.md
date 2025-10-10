@@ -25,6 +25,7 @@ A modern, feature-rich real-time chat application built with React, Node.js, Soc
 - **Call notifications** with accept/reject options
 - **Real-time peer-to-peer connection**
 - **Cross-browser compatibility**
+- **TURN relay ready** (metered.ca supported)
 
 ### 📎 Advanced File Sharing
 - **Multi-format file support** (PDF, DOC, DOCX, CSV, XML, TXT, JPG, PNG)
@@ -80,6 +81,30 @@ A modern, feature-rich real-time chat application built with React, Node.js, Soc
 
 ### Chat Interface
 ![Chat Interface](./screenshots/chat-interface.png)
+
+## 🔧 TURN Server Setup (metered.ca)
+
+For stable WebRTC calls across strict NAT/firewalls, configure TURN credentials in your frontend environment.
+
+Add these values to [frontend/.env](frontend/.env):
+
+```env
+VITE_METERED_USERNAME=your_metered_username
+VITE_METERED_CREDENTIAL=your_metered_credential
+
+# Optional (defaults are already set in code)
+VITE_METERED_STUN_URL=stun:stun.relay.metered.ca:80
+VITE_METERED_TURN_UDP_URL=turn:global.relay.metered.ca:80
+VITE_METERED_TURN_TCP_URL=turn:global.relay.metered.ca:80?transport=tcp
+VITE_METERED_TURN_TLS_URL=turn:global.relay.metered.ca:443
+VITE_METERED_TURN_TLS_TCP_URL=turns:global.relay.metered.ca:443?transport=tcp
+```
+
+Alternative: provide custom ICE servers directly as JSON:
+
+```env
+VITE_WEBRTC_ICE_SERVERS=[{"urls":"stun:stun.l.google.com:19302"},{"urls":["turn:global.relay.metered.ca:80"],"username":"your_metered_username","credential":"your_metered_credential"}]
+```
 
 
 

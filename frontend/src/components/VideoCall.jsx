@@ -3,6 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import LoadingScreen from "./LoadingScreen.jsx";
 import { sendOffer, receiveOffer, sendAnswer, receiveAnswer, sendIce, receiveIce, sendEndCall} from "../webRTC/webRTCSockets.js";
 import socket from "../socket.js";
+import { WEBRTC_ICE_SERVERS } from "../config.js";
 
 const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
   const localVideoRef = useRef(null);
@@ -53,7 +54,8 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
     }
 
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: WEBRTC_ICE_SERVERS,
+      iceCandidatePoolSize: 10,
     });
 
     pc.ontrack = (event) => {
@@ -307,7 +309,7 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
           }
         });
 
-        receiveIce(selectedUser, async (candidate) => {
+        receiveIce({ selectedUser, addIceCallback: async (candidate) => {
           try 
           {
             await addIceSafely(candidate);
@@ -316,7 +318,7 @@ const VideoCall = ({ isCaller, currentUser, selectedUser, onClose}) => {
           {
             console.log("receiveIce addIceSafely error", error);
           }
-        });
+        }});
 
         socket.on("end call", (data) => {
           cleanupCall();

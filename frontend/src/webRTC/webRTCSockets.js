@@ -33,18 +33,27 @@ const receiveAnswer = (callback) => {
   })
 }
 
-const iceQueueMap = {};
-
 const sendIce = (candidate, sender, receiver) => {
   socket.emit('ice', { candidate, sender, receiver })
 }
 
-const receiveIce = (pcId, addIceCallback) => {
+const resolveUserId = (userLike) => {
+  if (!userLike) {
+    return null
+  }
+  if (typeof userLike === 'string') {
+    return userLike
+  }
+  return userLike._id || null
+}
+
+const receiveIce = ({ selectedUser, addIceCallback }) => {
+  const expectedPeerId = resolveUserId(selectedUser)
   socket.off('ice')
   socket.on('ice', async ({ candidate, sender, receiver }) => {
-    if (!iceQueueMap[pcId]) 
-    {
-      iceQueueMap[pcId] = []
+    const senderId = resolveUserId(sender)
+    if (expectedPeerId && senderId && senderId !== expectedPeerId) {
+      return
     }
     if (!addIceCallback) 
     {
@@ -52,12 +61,11 @@ const receiveIce = (pcId, addIceCallback) => {
     }
     try 
     {
-      await addIceCallback(candidate);
+      await addIceCallback(candidate, sender, receiver)
     } 
     catch (error) 
     {
-      console.log("Socket: Remote description not set, queueing ICE.", error)
-      iceQueueMap[pcId].push(candidate)
+      console.log("Socket: addIceCallback failed.", error)
     }
   });
 };
