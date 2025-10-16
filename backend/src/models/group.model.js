@@ -39,6 +39,32 @@ const groupSchema = new Schema(
           type: String,
           default: "",
           trim: true,
+        },
+        isGuestRoom:
+        {
+          type: Boolean,
+          default: false,
+          index: true
+        },
+        guestTokenNonce:
+        {
+          type: String,
+          default: null
+        },
+        guestTokenExpiresAt:
+        {
+          type: Date,
+          default: null
+        },
+        guestLastActiveAt:
+        {
+          type: Date,
+          default: null
+        },
+        guestMaxMembers:
+        {
+          type: Number,
+          default: 2
         }
   },
   {

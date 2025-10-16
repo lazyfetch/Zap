@@ -2,7 +2,18 @@ import bcrypt from "bcrypt";
 import  ApiError  from "../utils/ApiError.js";
 import ApiSuccess  from "../utils/ApiSuccess.js";
 import { User } from "../models/user.model.js";
+import { Group } from "../models/group.model.js";
 import jwt from "jsonwebtoken";
+import {
+    buildGuestInviteLink,
+    cleanupExpiredGuestRooms,
+    deleteGuestRoomAndUsers,
+    getGuestInviteExpiryDate,
+    makeNonce,
+    markGuestRoomActive,
+    signGuestInviteToken,
+    verifyGuestInviteToken,
+} from "../utils/guestRoom.utils.js";
 
 const options = {
   httpOnly: true,
@@ -25,6 +36,60 @@ const generateRefreshToken = (userId) => {
 }
 
 const USE_COOKIES = process.env.USE_COOKIES === "true";
+
+const parseMinutes = (value, fallback) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const GUEST_SESSION_TTL_MINUTES = parseMinutes(process.env.GUEST_SESSION_TTL_MINUTES, 120);
+
+const getGuestSessionExpiryDate = () => {
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + GUEST_SESSION_TTL_MINUTES);
+    return expiresAt;
+}
+
+const makeGuestHandleSuffix = () => {
+    return Math.random().toString(16).slice(2, 6).toUpperCase();
+}
+
+const createUniqueGuestIdentity = async () => {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+        const suffix = makeGuestHandleSuffix();
+        const username = `guest_${suffix}`.toLowerCase();
+        const email = `${username}_${Date.now()}@guest.local`;
+
+        const exists = await User.findOne({ $or: [{ username }, { email }] }).select("_id");
+        if (!exists) {
+            return { username, email };
+        }
+    }
+
+    throw new ApiError(500, "Could not generate a guest identity");
+}
+
+const issueAuthResponse = async (user) => {
+    const accessToken = generateAccessToken(user._id)
+    const refreshToken = generateRefreshToken(user._id)
+
+    if (!accessToken || !refreshToken) {
+        throw new ApiError(500, "Error creating tokens");
+    }
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    const userObj = user.toObject();
+    delete userObj.password;
+    delete userObj.refreshToken;
+
+    return {
+        user: userObj,
+        accessToken,
+        refreshToken,
+    };
+}
 
 const registerUser = async (req, res, next) => {
     try 
@@ -148,6 +213,32 @@ const loginUser=async(req,res,next)=>{
 const logoutUser =async(req,res,next)=>{
     try {
         const user=req.user
+
+        if (user.isGuest) {
+            const roomId = user.guestRoom;
+            await User.deleteOne({ _id: user._id, isGuest: true });
+
+            if (roomId) {
+                const room = await Group.findById(roomId).select("_id members isGuestRoom");
+                if (room && room.isGuestRoom) {
+                    room.members = (room.members || []).filter((id) => id.toString() !== user._id.toString());
+                    if (room.members.length === 0) {
+                        await deleteGuestRoomAndUsers(room._id);
+                    } else {
+                        room.guestLastActiveAt = new Date();
+                        await room.save();
+                    }
+                }
+            }
+
+            res.clearCookie("accessToken", options);
+            res.clearCookie("refreshToken", options);
+
+            return res.status(200).json(
+                new ApiSuccess(200,"User logged out")
+            )
+        }
+
         user.refreshToken=""
         await user.save({validateBeforeSave:false})
 
@@ -236,4 +327,177 @@ catch (error)
 }
 }
 
-export {registerUser,loginUser,logoutUser,refreshTokens}
+const startGuestSession = async (req, res, next) => {
+    try {
+        await cleanupExpiredGuestRooms();
+
+        const identity = await createUniqueGuestIdentity();
+        const randomPassword = await bcrypt.hash(`${Date.now()}_${identity.username}`, 10);
+        const guestExpiresAt = getGuestSessionExpiryDate();
+        const inviteExpiry = getGuestInviteExpiryDate();
+        const nonce = makeNonce();
+
+        const guestUser = await User.create({
+            username: identity.username,
+            email: identity.email,
+            password: randomPassword,
+            isGuest: true,
+            guestExpiresAt,
+        });
+
+        const room = await Group.create({
+            name: `Demo Room ${identity.username.split("_")[1]}`,
+            creator: guestUser._id,
+            members: [guestUser._id],
+            admins: [guestUser._id],
+            description: "Temporary recruiter demo room",
+            isGuestRoom: true,
+            guestTokenNonce: nonce,
+            guestTokenExpiresAt: inviteExpiry,
+            guestLastActiveAt: new Date(),
+            guestMaxMembers: 2,
+        });
+
+        guestUser.guestRoom = room._id;
+        await guestUser.save({ validateBeforeSave: false });
+
+        const { user, accessToken, refreshToken } = await issueAuthResponse(guestUser);
+        const inviteToken = signGuestInviteToken({ roomId: room._id.toString(), nonce });
+        const inviteBase = req.get("origin") || process.env.CORS_ORIGIN;
+        const inviteLink = buildGuestInviteLink(inviteToken, inviteBase);
+
+        const payload = {
+            user,
+            accessToken,
+            refreshToken,
+            room: {
+                _id: room._id,
+                name: room.name,
+                members: room.members,
+                isGuestRoom: true,
+            },
+            inviteToken,
+            inviteLink,
+            expiresAt: inviteExpiry,
+        };
+
+        if (USE_COOKIES) {
+            return res.status(201)
+                .cookie("accessToken", accessToken, options)
+                .cookie("refreshToken", refreshToken, options)
+                .json(new ApiSuccess(201, "Guest session started", payload));
+        }
+
+        return res.status(201).json(new ApiSuccess(201, "Guest session started", payload));
+    }
+    catch (error) {
+        return next(error);
+    }
+}
+
+const joinGuestSession = async (req, res, next) => {
+    try {
+        await cleanupExpiredGuestRooms();
+
+        const { inviteToken } = req.body;
+        if (!inviteToken) {
+            throw new ApiError(400, "Invite token is required");
+        }
+
+        let payload;
+        try {
+            payload = verifyGuestInviteToken(inviteToken);
+        }
+        catch (error) {
+            throw new ApiError(401, "Invite token is invalid or expired");
+        }
+
+        const room = await Group.findById(payload.roomId);
+        if (!room || !room.isGuestRoom) {
+            throw new ApiError(404, "Guest room not found");
+        }
+
+        if (!room.guestTokenNonce || room.guestTokenNonce !== payload.nonce) {
+            throw new ApiError(401, "Invite token mismatch");
+        }
+
+        if (room.guestTokenExpiresAt && room.guestTokenExpiresAt < new Date()) {
+            throw new ApiError(401, "Invite token expired");
+        }
+
+        if ((room.members || []).length >= (room.guestMaxMembers || 2)) {
+            throw new ApiError(409, "This guest room is full");
+        }
+
+        const identity = await createUniqueGuestIdentity();
+        const randomPassword = await bcrypt.hash(`${Date.now()}_${identity.username}`, 10);
+        const guestExpiresAt = getGuestSessionExpiryDate();
+
+        const guestUser = await User.create({
+            username: identity.username,
+            email: identity.email,
+            password: randomPassword,
+            isGuest: true,
+            guestExpiresAt,
+            guestRoom: room._id,
+        });
+
+        room.members.push(guestUser._id);
+        room.guestLastActiveAt = new Date();
+        await room.save();
+
+        const { user, accessToken, refreshToken } = await issueAuthResponse(guestUser);
+        await markGuestRoomActive(room._id);
+
+        const responsePayload = {
+            user,
+            accessToken,
+            refreshToken,
+            room: {
+                _id: room._id,
+                name: room.name,
+                members: room.members,
+                isGuestRoom: true,
+            },
+        };
+
+        if (USE_COOKIES) {
+            return res.status(200)
+                .cookie("accessToken", accessToken, options)
+                .cookie("refreshToken", refreshToken, options)
+                .json(new ApiSuccess(200, "Joined guest room", responsePayload));
+        }
+
+        return res.status(200).json(new ApiSuccess(200, "Joined guest room", responsePayload));
+    }
+    catch (error) {
+        return next(error);
+    }
+}
+
+const getGuestRoom = async (req, res, next) => {
+    try {
+        const user = req.user;
+        if (!user?.isGuest || !user.guestRoom) {
+            throw new ApiError(403, "Guest room is only available for guest users");
+        }
+
+        const room = await Group.findById(user.guestRoom).select("_id name members isGuestRoom guestMaxMembers guestTokenExpiresAt");
+        if (!room || !room.isGuestRoom) {
+            throw new ApiError(404, "Guest room not found");
+        }
+
+        await markGuestRoomActive(room._id);
+
+        return res.status(200).json(
+            new ApiSuccess(200, "Guest room fetched", {
+                room,
+            })
+        );
+    }
+    catch (error) {
+        return next(error);
+    }
+}
+
+export {registerUser,loginUser,logoutUser,refreshTokens,startGuestSession,joinGuestSession,getGuestRoom}

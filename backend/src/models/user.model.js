@@ -53,6 +53,22 @@ const userSchema = new Schema(
         lastSeen:
         {
             type:Date
+        },
+        isGuest:
+        {
+            type: Boolean,
+            default: false
+        },
+        guestExpiresAt:
+        {
+            type: Date,
+            default: null
+        },
+        guestRoom:
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Group",
+            default: null
         }
     },
     {
