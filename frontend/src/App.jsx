@@ -8,7 +8,6 @@ import UsernameSelection from "./AuthComponents/UsernameSelection";
 import { JoinRoom, emitUserOnline, emitUserOffline } from "./ClientSocket/ClientSocket";
 import { FiLogOut } from 'react-icons/fi';
 import GroupChatWindow from "./components/GroupChatWindow";
-import GroupMessageInput from "./components/GroupMessageInput";
 import {API_URL} from "./config.js"
 
 function App() {
@@ -19,6 +18,8 @@ function App() {
   const [showUsernameSelection, setShowUsernameSelection] = useState(false); 
   const [sidebarWidth, setSidebarWidth] = useState(288); 
   const [groupMessagesRefreshKey, setGroupMessagesRefreshKey] = useState(0);
+  const [guestInviteLink, setGuestInviteLink] = useState(localStorage.getItem("guestInviteLink") || "");
+  const [guestCopyLabel, setGuestCopyLabel] = useState("Copy Invite Link");
   const sidebarMin = 275;
   const sidebarMax = 500;
   const resizing = useRef(false);
@@ -89,6 +90,19 @@ function App() {
       {
         setCurrentUser(data.data.user);
         JoinRoom(data.data.user._id);
+
+        if (data.data.user.isGuest) {
+          const guestRoomResponse = await fetch(`${API_URL}/api/v1/auth/guest/room`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${accessToken}` },
+            credentials: "include"
+          });
+          const guestRoomData = await guestRoomResponse.json();
+          if (guestRoomResponse.ok && guestRoomData.success) {
+            setSelectedGroup(guestRoomData.data.room);
+          }
+          return;
+        }
         
         await fetch(`${API_URL}/api/v1/users/presence`, {
           method: 'POST',
@@ -131,6 +145,19 @@ function App() {
         if (newResponse.ok && newData.success) {
           setCurrentUser(newData.data.user);
           JoinRoom(newData.data.user._id);
+
+          if (newData.data.user.isGuest) {
+            const guestRoomResponse = await fetch(`${API_URL}/api/v1/auth/guest/room`, {
+              method: 'GET',
+              headers: { 'Authorization': `Bearer ${refreshData.data.accessToken}` },
+              credentials: "include"
+            });
+            const guestRoomData = await guestRoomResponse.json();
+            if (guestRoomResponse.ok && guestRoomData.success) {
+              setSelectedGroup(guestRoomData.data.room);
+            }
+            return;
+          }
           
           await fetch(`${API_URL}/api/v1/users/presence`, {
             method: 'POST',
@@ -164,17 +191,19 @@ function App() {
       const accessToken = localStorage.getItem('accessToken');
       
       if (accessToken && currentUser) {
-        await fetch(`${API_URL}/api/v1/users/presence`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
-          },
-          credentials: 'include',
-          body: JSON.stringify({ online: false })
-        });
+        if (!currentUser.isGuest) {
+          await fetch(`${API_URL}/api/v1/users/presence`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`
+            },
+            credentials: 'include',
+            body: JSON.stringify({ online: false })
+          });
 
-        emitUserOffline(currentUser._id, new Date())
+          emitUserOffline(currentUser._id, new Date())
+        }
 
         await fetch(`${API_URL}/api/v1/auth/logout`, {
           method: 'POST',
@@ -193,9 +222,11 @@ function App() {
     {
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
+      localStorage.removeItem('guestInviteLink')
       setCurrentUser(null)
       setSelectedUser(null)
       setSelectedGroup(null)
+      setGuestInviteLink("")
     }
   };
 
@@ -206,12 +237,38 @@ function App() {
     }
   }, [showUsernameSelection])
   
-  const handleLoginSuccess = (user) => {
+  const handleLoginSuccess = (user, room = null, inviteLink = null) => {
     setCurrentUser(user);
     setShowUsernameSelection(false)
     JoinRoom(user._id); 
+
+    if (user.isGuest && room) {
+      setSelectedGroup(room)
+      setSelectedUser(null)
+    }
+
+    if (inviteLink) {
+      localStorage.setItem("guestInviteLink", inviteLink)
+      setGuestInviteLink(inviteLink)
+    }
+
     window.history.replaceState({}, document.title, "/")
   };
+
+  const copyGuestInviteLink = async () => {
+    if (!guestInviteLink) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(guestInviteLink)
+      setGuestCopyLabel("Copied")
+      setTimeout(() => setGuestCopyLabel("Copy Invite Link"), 1500)
+    } catch (error) {
+      setGuestCopyLabel("Copy failed")
+      setTimeout(() => setGuestCopyLabel("Copy Invite Link"), 1500)
+    }
+  }
 
   const handleMouseDown = () => {
     resizing.current = true;
@@ -248,6 +305,51 @@ function App() {
     return showRegister
       ? <Register onShowLogin={() => setShowRegister(false)} />
       : <Login onLoginSuccess={handleLoginSuccess} onShowRegister={() => setShowRegister(true)} />;
+  }
+
+  if (currentUser.isGuest) {
+    return (
+      <div className="flex h-screen overflow-hidden bg-black text-gray-100">
+        <div className="flex flex-col flex-1 overflow-hidden bg-black">
+          <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+            <div>
+              <h1 className="text-xl font-bold text-amber-400">Zap Demo Room</h1>
+              <p className="text-xs text-gray-400 mt-1">Temporary guest session for recruiter testing</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={copyGuestInviteLink}
+                className="px-3 py-2 rounded-md bg-amber-500 text-black hover:bg-amber-600 text-sm font-medium"
+                disabled={!guestInviteLink}
+              >
+                {guestCopyLabel}
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors"
+                title="Exit Guest Session"
+              >
+                <FiLogOut size={20} />
+              </button>
+            </div>
+          </div>
+
+          {selectedGroup ? (
+            <GroupChatWindow
+              currentUser={currentUser}
+              selectedGroup={selectedGroup}
+              setSelectedGroup={setSelectedGroup}
+              refreshKey={groupMessagesRefreshKey}
+              isGuestMode={true}
+            />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
+              <p className="text-gray-300">Preparing your demo room...</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (

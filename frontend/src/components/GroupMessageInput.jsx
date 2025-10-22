@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { FiSend, FiSmile, FiPaperclip, FiMic } from "react-icons/fi";
 import { SendGroupMessage } from "../ClientSocket/ClientSocket.jsx";
 import {API_URL} from "../config.js"
-export default function GroupMessageInput({ selectedGroup, currentUser, onMessageSent }) {
+export default function GroupMessageInput({ selectedGroup, currentUser, onMessageSent, isGuestMode = false }) {
   const [message, setMessage] = useState("");
   const inputRef = useRef(null);
   const fileInputRef = useRef(null)
@@ -24,7 +24,7 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
     let tempId = Date.now() + Math.random();
     let fileData = null;
 
-    if (selectedFile) 
+    if (selectedFile && !isGuestMode) 
     {
       try 
       {
@@ -58,7 +58,7 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
       message: message,
       sender: currentUser._id,
       tempId: tempId,
-      fileData: fileData,
+      fileData: isGuestMode ? null : fileData,
       createdAt: new Date().toISOString(),
       status: "sent"
     });
@@ -132,20 +132,24 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
           </div>
         )}
 
-        <input 
-          type="file"
-          className="hidden" 
-          ref={fileInputRef}
-          onChange={handleFileChange}  
-        />
-        
-        <button
-          type="button"
-          onClick={() => fileInputRef.current && fileInputRef.current.click()}
-          className="p-2 rounded-md text-gray-500 hover:text-amber-400 hover:bg-gray-900"
-        >
-          <FiPaperclip size={22} />
-        </button>
+        {!isGuestMode && (
+          <>
+            <input 
+              type="file"
+              className="hidden" 
+              ref={fileInputRef}
+              onChange={handleFileChange}  
+            />
+            
+            <button
+              type="button"
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              className="p-2 rounded-md text-gray-500 hover:text-amber-400 hover:bg-gray-900"
+            >
+              <FiPaperclip size={22} />
+            </button>
+          </>
+        )}
         
         <input
           ref={inputRef}
@@ -169,6 +173,9 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
           <FiSend size={18} />
         </button>
       </form>
+      {isGuestMode && (
+        <p className="text-xs text-gray-500 mt-2">Guest room messages are temporary and disappear after session timeout.</p>
+      )}
     </div>
   );
 }

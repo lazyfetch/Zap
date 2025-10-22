@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { JoinRoom, emitUserOnline } from '../ClientSocket/ClientSocket';
 import config from '../config.js';
 
@@ -9,6 +9,12 @@ const Login = ({ onLoginSuccess, onShowRegister }) => {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGuestLoading, setIsGuestLoading] = useState(false);
+  const [inviteJoinError, setInviteJoinError] = useState('');
+  const inviteJoinAttemptedRef = useRef(false);
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const inviteToken = urlParams.get('guestInvite');
 
   const handleChange = (e) => {
     setFormData({
@@ -75,6 +81,80 @@ const Login = ({ onLoginSuccess, onShowRegister }) => {
     window.location.href = `${config.API_URL}/api/v1/auth/google`;
   };
 
+  const completeGuestLogin = (data) => {
+    localStorage.setItem('accessToken', data.data.accessToken);
+    localStorage.setItem('refreshToken', data.data.refreshToken);
+    localStorage.setItem('guestInviteLink', data.data.inviteLink || '');
+    JoinRoom(data.data.user._id);
+    onLoginSuccess(data.data.user, data.data.room, data.data.inviteLink || null);
+  }
+
+  const handleGuestStart = async () => {
+    setError('');
+    setInviteJoinError('');
+    setIsGuestLoading(true);
+    try {
+      const response = await fetch(`${config.API_URL}/api/v1/auth/guest/start`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Unable to start guest session');
+      }
+      completeGuestLogin(data);
+    } catch (err) {
+      setError(err.message || 'Unable to start guest session');
+    } finally {
+      setIsGuestLoading(false);
+    }
+  }
+
+  const handleGuestJoin = async () => {
+    if (!inviteToken) {
+      return;
+    }
+    setError('');
+    setInviteJoinError('');
+    setIsGuestLoading(true);
+    try {
+      const response = await fetch(`${config.API_URL}/api/v1/auth/guest/join`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ inviteToken })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Unable to join guest room');
+      }
+      localStorage.setItem('accessToken', data.data.accessToken);
+      localStorage.setItem('refreshToken', data.data.refreshToken);
+      JoinRoom(data.data.user._id);
+      onLoginSuccess(data.data.user, data.data.room, null);
+    } catch (err) {
+      const message = err.message || 'Unable to join guest room';
+      setInviteJoinError(message);
+      setError(message);
+    } finally {
+      setIsGuestLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!inviteToken || inviteJoinAttemptedRef.current) {
+      return;
+    }
+
+    inviteJoinAttemptedRef.current = true;
+    handleGuestJoin();
+  }, []);
+
   return (
    <div className="flex justify-center items-center min-h-screen p-4" 
       style={{
@@ -92,6 +172,12 @@ const Login = ({ onLoginSuccess, onShowRegister }) => {
         {error && (
           <div className="bg-red-50 text-red-500 p-4 rounded-md mb-6 text-sm">
             {error}
+          </div>
+        )}
+
+        {inviteToken && !isGuestLoading && inviteJoinError && (
+          <div className="bg-amber-50 text-amber-700 p-4 rounded-md mb-6 text-sm border border-amber-200">
+            Invite join failed: {inviteJoinError}. You can still start your own temporary guest room below.
           </div>
         )}
 
@@ -158,6 +244,22 @@ const Login = ({ onLoginSuccess, onShowRegister }) => {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             Continue with Google
+          </button>
+
+          <button
+            onClick={handleGuestStart}
+            disabled={isGuestLoading || isLoading}
+            className={`mt-3 w-full flex justify-center items-center px-4 py-3 rounded-md text-sm font-medium transition duration-200 ${
+              isGuestLoading || isLoading
+                ? 'bg-amber-100 text-amber-700 cursor-not-allowed'
+                : 'bg-amber-500 text-black hover:bg-amber-600'
+            }`}
+          >
+            {isGuestLoading
+              ? 'Preparing Demo Room...'
+              : inviteToken
+                ? 'Start Your Own Guest Room'
+                : 'Try as Guest'}
           </button>
         </div>
         

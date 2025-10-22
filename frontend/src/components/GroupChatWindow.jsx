@@ -7,7 +7,7 @@ import FileMessageBubble from "./FileMessageBubble.jsx";
 import GroupMessageInput from "./GroupMessageInput.jsx";
 import {API_URL} from "../config.js"
 
-export default function GroupChatWindow({ currentUser, selectedGroup, setSelectedGroup, refreshKey }) {
+export default function GroupChatWindow({ currentUser, selectedGroup, setSelectedGroup, refreshKey, isGuestMode = false }) {
   const [messages, setMessages] = useState([]);
   const [showGroupDetails, setShowGroupDetails] = useState(false);
   const bottomRef = useRef(null);
@@ -194,7 +194,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
           <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
             <FiUsers size={24} />
           </div>
-          <div className="ml-3 cursor-pointer" onClick={() => setShowGroupDetails(true)}>
+          <div className="ml-3 cursor-pointer" onClick={() => !isGuestMode && setShowGroupDetails(true)}>
             <div className="font-medium">{selectedGroup.name}</div>
             <div className="text-xs text-gray-400">
               {selectedGroup.members.length} members
@@ -249,9 +249,10 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
       <GroupMessageInput
         selectedGroup={selectedGroup}
         currentUser={currentUser}
+        isGuestMode={isGuestMode}
       />
 
-      {showGroupDetails && (
+      {showGroupDetails && !isGuestMode && (
         <GroupDetailsModal
           group={selectedGroup}
           currentUser={currentUser}
