@@ -8,7 +8,10 @@ import session from "express-session";
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import { Message } from "./src/models/message.model.js";
+import { Group } from "./src/models/group.model.js";
+import { User } from "./src/models/user.model.js";
 import passport from "./src/middleware/passport.js";
+import { cleanupExpiredGuestRooms, markGuestRoomActive } from "./src/utils/guestRoom.utils.js";
 
 const USE_COOKIES = process.env.USE_COOKIES === "true";
 
@@ -49,57 +52,128 @@ app.use((req, res, next) => {
   next();
 });
 
+setInterval(async () => {
+  try {
+    await cleanupExpiredGuestRooms();
+  } catch (error) {
+    console.error("Guest room cleanup failed:", error?.message || error);
+  }
+}, 5 * 60 * 1000);
+
 
 
 io.on('connection', (socket) => {
+  const isGuestUser = async (userId) => {
+    if (!userId) {
+      return false;
+    }
+    const user = await User.findById(userId).select("isGuest");
+    return Boolean(user?.isGuest);
+  };
+
   socket.on('join room', (userId) => {
     socket.join(userId);
   })
   socket.on('typing', ({sender,receiver}) => {
-    io.to(receiver).emit('typing',{sender,receiver})
+    isGuestUser(sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver).emit('typing',{sender,receiver})
+    })
   })
 
   socket.on('stop typing', ({ sender, receiver }) => {
-    io.to(receiver).emit('stop typing', { sender,receiver});
+    isGuestUser(sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver).emit('stop typing', { sender,receiver});
+    })
   })
 
   socket.on('start call', ({ sender, receiver }) => {
-    io.to(receiver._id).emit('start call', { sender })
+    isGuestUser(sender?._id || sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver._id).emit('start call', { sender })
+    })
   })
 
   socket.on('offer', ({ offer, sender, receiver }) => {
-    io.to(receiver._id).emit('offer', { offer, sender })
+    isGuestUser(sender?._id || sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver._id).emit('offer', { offer, sender })
+    })
   })
 
   socket.on('answer', ({ answer, sender, receiver }) => {
-    io.to(receiver._id).emit('answer', { answer, sender })
+    isGuestUser(sender?._id || sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver._id).emit('answer', { answer, sender })
+    })
   })
 
   socket.on('ice', ({ candidate, sender, receiver }) => {
-    io.to(receiver._id).emit('ice', { candidate, sender });
+    isGuestUser(sender?._id || sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver._id).emit('ice', { candidate, sender });
+    })
   });
 
   socket.on('end call', ({ sender, receiver }) => {
-    io.to(receiver._id).emit('end call', { sender });
+    isGuestUser(sender?._id || sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver._id).emit('end call', { sender });
+    })
   });
 
   socket.on('reject call', ({ sender, receiver }) => {
-    io.to(receiver._id).emit('reject call', { sender });
+    isGuestUser(sender?._id || sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver._id).emit('reject call', { sender });
+    })
   });
 
   socket.on('delete',({msgObj,receiver})=>{
-    io.to(receiver._id).emit('delete',msgObj)
+    isGuestUser(msgObj?.sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver._id).emit('delete',msgObj)
+    })
   })
   socket.on('delete group message', ({ msgObj, group}) => {
     io.to(group._id).emit('delete group message', msgObj);
   });
 
   socket.on('read', ({ sender, receiver, messageIds }) => {
-    io.to(receiver).emit('read', { sender, messageIds })
+    isGuestUser(sender).then((guest) => {
+      if (guest) {
+        return;
+      }
+      io.to(receiver).emit('read', { sender, messageIds })
+    })
   })
   
 
   socket.on('chat message', async (msgObj) => {
+    const senderUser = await User.findById(msgObj.sender).select("_id isGuest");
+    if (!senderUser || senderUser.isGuest) {
+      return;
+    }
+
     io.to(msgObj.receiver).to(msgObj.sender).emit('chat message', msgObj);
 
     let content = "File attachment"; 
@@ -141,6 +215,32 @@ io.on('connection', (socket) => {
   })
 
   socket.on('group message', async (msgObj) => {
+    const group = await Group.findById(msgObj.groupId).select("_id isGuestRoom members guestMaxMembers");
+    if (!group) {
+      return;
+    }
+
+    const sender = await User.findById(msgObj.sender).select("_id isGuest guestRoom");
+    if (!sender) {
+      return;
+    }
+
+    const isMember = (group.members || []).some((memberId) => memberId.toString() === sender._id.toString());
+    if (!isMember) {
+      return;
+    }
+
+    if (group.isGuestRoom) {
+      const senderGuestRoom = sender.guestRoom ? sender.guestRoom.toString() : "";
+      if (!sender.isGuest || senderGuestRoom !== group._id.toString()) {
+        return;
+      }
+
+      await markGuestRoomActive(group._id);
+      io.to(msgObj.groupId).emit('group message', msgObj);
+      return;
+    }
+
     io.to(msgObj.groupId).emit('group message', msgObj);
     
     let content = "File attachment"
@@ -201,8 +301,13 @@ app.use("/api/v1/group", groupRouter);
 app.use("/api/v1/file", fileRouter);
 
 app.use((err, req, res, next) => {
-  console.error("ERROR:", err);
-  res.status(err.statusCode || 500).json({
+  const statusCode = err.statusCode || 500;
+
+  if (statusCode >= 500) {
+    console.error("ERROR:", err);
+  }
+
+  res.status(statusCode).json({
     success: false,
     message: err.message || "Internal Server Error",
     details: err.details || null

@@ -28,6 +28,11 @@ const verifyLogin = async(req, res, next) => {
     if (!user) {
       return next(new ApiError(401, "User not logged in"));
     }
+
+    if (user.isGuest && user.guestExpiresAt && user.guestExpiresAt < new Date()) {
+      await User.deleteOne({ _id: user._id, isGuest: true });
+      return next(new ApiError(401, "Guest session expired"));
+    }
     
     req.user = user;
     next();
@@ -44,4 +49,11 @@ const verifyLogin = async(req, res, next) => {
   }
 }
 
-export { verifyLogin }
+const requireNonGuest = (req, res, next) => {
+  if (req.user?.isGuest) {
+    return next(new ApiError(403, "Guest users cannot access this endpoint"));
+  }
+  return next();
+}
+
+export { verifyLogin, requireNonGuest }

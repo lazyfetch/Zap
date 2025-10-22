@@ -8,6 +8,11 @@ import mongoose from "mongoose";
 const getAllGroups = async (req, res) => {
     try 
     {
+        if (req.user?.isGuest) {
+            return res.status(200).json(
+                new ApiSuccess(200, { groups: [] }, "All groups fetched successfully")
+            )
+        }
         const groups = await Group.find()
         return res.status(200).json(
             new ApiSuccess(200, { groups }, "All groups fetched successfully")
@@ -25,6 +30,9 @@ const getAllGroups = async (req, res) => {
 const createGroup = async (req, res) => {
     try 
     {
+        if (req.user?.isGuest) {
+            throw new ApiError(403, "Guest users cannot create regular groups")
+        }
         const { name, description} = req.body
         const creatorId = req.user._id;
     
@@ -61,6 +69,9 @@ const createGroup = async (req, res) => {
 const addMember = async (req, res) => {
     try 
     {
+        if (req.user?.isGuest) {
+            throw new ApiError(403, "Guest users cannot modify group members")
+        }
         const { groupId, userId} = req.body;
 
         if (!groupId || !userId ) 
@@ -101,6 +112,9 @@ const addMember = async (req, res) => {
 const removeMember = async (req, res) => {
     try 
     {
+        if (req.user?.isGuest) {
+            throw new ApiError(403, "Guest users cannot modify group members")
+        }
         const { groupId} = req.body
         const userId=req.user._id
 
@@ -146,6 +160,9 @@ const removeMember = async (req, res) => {
 const deleteGroup = async (req, res) => {
     try 
     {
+        if (req.user?.isGuest) {
+            throw new ApiError(403, "Guest users cannot delete groups")
+        }
         const {groupId} = req.body
         const userId=req.user._id
 
@@ -181,6 +198,9 @@ const deleteGroup = async (req, res) => {
 const getGroup = async (req, res) => {
     try     
     {
+        if (req.user?.isGuest) {
+            throw new ApiError(403, "Guest users cannot access this endpoint")
+        }
         const { groupId, userId } = req.body
 
         if (!groupId || !userId) 
@@ -213,6 +233,9 @@ const getGroup = async (req, res) => {
 const updateGroup = async (req, res) => {
     try 
     {
+        if (req.user?.isGuest) {
+            throw new ApiError(403, "Guest users cannot update groups")
+        }
         const { groupId, name, description } = req.body
         const userId=req.user._id
 
@@ -258,6 +281,9 @@ const updateGroup = async (req, res) => {
 const leaveGroup = async (req, res) => {
     try 
     {
+        if (req.user?.isGuest) {
+            throw new ApiError(403, "Guest users cannot leave groups through this endpoint")
+        }
         const {groupId} = req.body
         const userId=req.user._id
 
@@ -309,6 +335,18 @@ const getUserGroups = async (req, res) => {
     {
         const userId = req.user._id;
 
+        if (req.user?.isGuest) {
+            const guestGroup = await Group.findOne({
+                _id: req.user.guestRoom,
+                isGuestRoom: true,
+                members: userId,
+            }).populate('members', 'username').populate('admins', 'username')
+
+            return res.status(200).json(
+                new ApiSuccess(200, { groups: guestGroup ? [guestGroup] : [] }, "User groups fetched successfully")
+            )
+        }
+
         if (!userId) 
         {
             throw new ApiError(400, "User ID is required")
@@ -329,6 +367,9 @@ const getUserGroups = async (req, res) => {
 const createGroupMessage = async (req, res, next) => {
     try 
     {
+        if (req.user?.isGuest) {
+            throw new ApiError(403, "Guest users cannot post persistent group messages")
+        }
         const { content, group } = req.body
         const userId = req.user._id
 
@@ -372,6 +413,21 @@ const getGroupMessages = async (req, res, next) => {
         const { groupId } = req.body;
         const userId = req.user._id;
 
+        if (req.user?.isGuest) {
+            if (!req.user.guestRoom || req.user.guestRoom.toString() !== groupId) {
+                throw new ApiError(403, "Guest users can only access their demo room")
+            }
+
+            const guestRoom = await Group.findOne({ _id: groupId, isGuestRoom: true, members: userId });
+            if (!guestRoom) {
+                throw new ApiError(404, "Guest room not found")
+            }
+
+            return res.status(200).json(
+                new ApiSuccess(200, "Guest room messages fetched successfully", { messages: [] })
+            )
+        }
+
         const group = await Group.findById(groupId);
         if (!group) 
         {
@@ -402,6 +458,9 @@ const getGroupMessages = async (req, res, next) => {
 const deleteGroupMessage = async (req, res, next) => {
     try 
     {
+        if (req.user?.isGuest) {
+            throw new ApiError(403, "Guest users cannot delete persistent group messages")
+        }
         const { messageId, groupId } = req.body
         const userId = req.user._id
 
@@ -440,6 +499,12 @@ const deleteGroupMessage = async (req, res, next) => {
 
 const markGroupMessagesAsRead = async (req, res, next) => {
   try {
+        if (req.user?.isGuest) {
+            return res.status(200).json(
+                new ApiSuccess(200, "Guest messages are ephemeral", { messageIds: [] })
+            )
+        }
+
     const { messageIds, groupId } = req.body;
     const userId = req.user._id;
 
