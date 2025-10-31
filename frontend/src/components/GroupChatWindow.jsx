@@ -1,17 +1,60 @@
 import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble.jsx";
-import { FiUsers } from "react-icons/fi";
-import { JoinGroupRoom, OnGroupMessage, ChangeStatus, deleteGroupMessage, onDeleteGroupMessage, readGroupMessages, onReadGroupMessages } from "../ClientSocket/ClientSocket.jsx";
+import { FiUsers, FiVideo } from "react-icons/fi";
+import { ChangeStatus, JoinGroupRoom, OnGroupMessage, deleteGroupMessage, emitGuestMessageDelivered, emitGuestMessageRead, onDeleteGroupMessage, onGroupStopTyping, onGroupTyping, onGuestMessageDelivered, onGuestMessageRead, onReadGroupMessages, readGroupMessages } from "../ClientSocket/ClientSocket.jsx";
 import GroupDetailsModal from "./GroupDetailsModal.jsx";
 import FileMessageBubble from "./FileMessageBubble.jsx";
 import GroupMessageInput from "./GroupMessageInput.jsx";
+import TypingBubble from "./TypingBubble.jsx";
+import VideoCall from "./VideoCall.jsx";
+import IncomingCallModal from "./IncomingCallModal.jsx";
+import { ReceiveCall, receiveEndCall, sendRejectCall, StartCall } from "../webRTC/webRTCSockets.js";
 import {API_URL} from "../config.js"
 
 export default function GroupChatWindow({ currentUser, selectedGroup, setSelectedGroup, refreshKey, isGuestMode = false }) {
   const [messages, setMessages] = useState([]);
   const [showGroupDetails, setShowGroupDetails] = useState(false);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [showIncomingCallModal, setShowIncomingCallModal] = useState(false);
+  const [incomingCallData, setIncomingCallData] = useState(null);
+  const [isVideoCallVisible, setIsVideoCallVisible] = useState(false);
+  const [isCaller, setIsCaller] = useState(false);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
+
+  const getMemberId = (member) => {
+    if (!member) {
+      return null;
+    }
+    if (typeof member === "string") {
+      return member;
+    }
+    return member._id || null;
+  }
+
+  const getMemberName = (member) => {
+    if (!member) {
+      return "Guest";
+    }
+    if (typeof member === "string") {
+      return "Guest";
+    }
+    return member.username || "Guest";
+  }
+
+  const peerMember = (selectedGroup.members || []).find((member) => getMemberId(member) !== currentUser._id) || null;
+  const peerUser = peerMember ? {
+    _id: getMemberId(peerMember),
+    username: getMemberName(peerMember),
+  } : null;
+
+  const getUserNameById = (userId) => {
+    const member = (selectedGroup.members || []).find((item) => getMemberId(item) === userId)
+    if (!member) {
+      return "Guest";
+    }
+    return getMemberName(member)
+  }
 
   const JoinRoom = () => {
     JoinGroupRoom(selectedGroup._id)
@@ -49,11 +92,13 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
   useEffect(() => {
     const handleGroupMessage = (msg) => {
       if (msg && (msg.message || msg.fileData)) {
+        const isSelf = msg.sender === currentUser._id
         const messageObj = {
           content: msg.message || (msg.fileData ? msg.fileData.data.originalName : "File attachment"),
           tempId: msg.tempId,
-          status: msg.sender === currentUser._id ? "not_delivered" : undefined,
+          status: isSelf ? "sent" : undefined,
           sender: msg.sender,
+          senderName: msg.senderName || getUserNameById(msg.sender),
           roomId: msg.groupId,
           createdAt: new Date().toISOString()
         }
@@ -66,6 +111,10 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
         }
 
         setMessages((prev) => [...prev, messageObj]);
+
+        if (isGuestMode && !isSelf && msg.tempId) {
+          emitGuestMessageDelivered(selectedGroup._id, msg.tempId, msg.sender, currentUser._id)
+        }
       } 
       else if (typeof msg === "string") 
       {
@@ -77,9 +126,13 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
       }
     };
     OnGroupMessage(handleGroupMessage);
-  }, [selectedGroup._id, currentUser._id])
+  }, [selectedGroup._id, currentUser._id, isGuestMode])
 
   useEffect(() => {
+    if (isGuestMode) {
+      return
+    }
+
     ChangeStatus((msg) => {
       setMessages((prev) =>
         prev.map((m) => {
@@ -94,9 +147,20 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
         })
       );
     });
-  }, []);
+  }, [isGuestMode]);
 
   useEffect(() => {
+    if (isGuestMode) {
+      const unreadTempIds = messages
+        .filter((m) => m.sender !== currentUser._id && m.tempId && m.status !== "read")
+        .map((m) => m.tempId)
+
+      if (unreadTempIds.length > 0 && peerUser?._id) {
+        emitGuestMessageRead(selectedGroup._id, unreadTempIds, peerUser._id, currentUser._id)
+      }
+      return
+    }
+
     const unreadMessages = messages.filter(
       m => m.sender !== currentUser._id && 
            m.status !== "read" && 
@@ -123,16 +187,16 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
         console.error('Failed to mark group messages as read:', error);
       });
     }
-  }, [messages, selectedGroup, currentUser._id]);
+  }, [messages, selectedGroup, currentUser._id, isGuestMode, peerUser?._id]);
 
   useEffect(() => {
     onReadGroupMessages((data) => {
-      const { sender, messageIds } = data;
+      const { messageIds } = data;
       
       if (Array.isArray(messageIds)) {
         setMessages(prev =>
           prev.map(msg =>
-            messageIds.includes(msg._id)
+            messageIds.includes(msg._id) || messageIds.includes(msg.tempId)
               ? { ...msg, status: "read" }
               : msg
           )
@@ -140,6 +204,115 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!isGuestMode) {
+      return
+    }
+
+    onGuestMessageDelivered(({ groupId, tempId }) => {
+      if (groupId !== selectedGroup._id) {
+        return
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.tempId === tempId && msg.sender === currentUser._id && msg.status !== "read"
+            ? { ...msg, status: "sent" }
+            : msg
+        )
+      )
+    })
+
+    onGuestMessageRead(({ groupId, tempIds }) => {
+      if (groupId !== selectedGroup._id || !Array.isArray(tempIds)) {
+        return
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          tempIds.includes(msg.tempId) && msg.sender === currentUser._id
+            ? { ...msg, status: "read" }
+            : msg
+        )
+      )
+    })
+  }, [isGuestMode, selectedGroup._id, currentUser._id])
+
+  useEffect(() => {
+    onGroupTyping((data) => {
+      if (!data || data.groupId !== selectedGroup._id || data.sender === currentUser._id) {
+        return
+      }
+
+      setTypingUsers((prev) => {
+        const exists = prev.some((user) => user.sender === data.sender)
+        if (exists) {
+          return prev
+        }
+        return [...prev, { sender: data.sender, senderName: data.senderName || getUserNameById(data.sender) }]
+      })
+    })
+
+    onGroupStopTyping((data) => {
+      if (!data || data.groupId !== selectedGroup._id) {
+        return
+      }
+
+      setTypingUsers((prev) => prev.filter((user) => user.sender !== data.sender))
+    })
+  }, [selectedGroup._id, currentUser._id])
+
+  useEffect(() => {
+    const onCall = (data) => {
+      if (!isGuestMode) {
+        return
+      }
+      setIncomingCallData(data)
+      setShowIncomingCallModal(true)
+      setIsCaller(false)
+      setIsVideoCallVisible(true)
+    }
+
+    ReceiveCall(onCall)
+  }, [isGuestMode])
+
+  useEffect(() => {
+    const onEndCall = () => {
+      setIsVideoCallVisible(false)
+      setShowIncomingCallModal(false)
+    }
+
+    receiveEndCall(onEndCall)
+  }, [])
+
+  const handleStartGuestCall = () => {
+    if (!peerUser?._id) {
+      return
+    }
+
+    setIsCaller(true)
+    setIsVideoCallVisible(true)
+    StartCall(currentUser, peerUser)
+  }
+
+  const handleAcceptCall = () => {
+    setShowIncomingCallModal(false)
+  }
+
+  const handleRejectCall = () => {
+    setShowIncomingCallModal(false)
+    setIsVideoCallVisible(false)
+    if (peerUser?._id) {
+      sendRejectCall(currentUser, peerUser)
+    }
+  }
+
+  const typingText = typingUsers.length === 0
+    ? ""
+    : typingUsers.length === 1
+      ? `${typingUsers[0].senderName} is typing...`
+      : `${typingUsers.slice(0, 2).map((user) => user.senderName).join(", ")} are typing...`
 
   const handleDeleteMessage = async (msg) => {
     deleteGroupMessage(msg, selectedGroup)
@@ -201,6 +374,15 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
             </div>
           </div>
         </div>
+        {isGuestMode && peerUser?._id && (
+          <button
+            onClick={handleStartGuestCall}
+            className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors"
+            title="Start Video Call"
+          >
+            <FiVideo size={20} />
+          </button>
+        )}
       </div>
       <div
         ref={messagesContainerRef}
@@ -243,6 +425,7 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
             </div>
           </div>
         ))}
+        {typingText && <TypingBubble text={typingText} />}
         <div ref={bottomRef} className="h-1 bg-transparent" />
       </div>
 
@@ -261,6 +444,24 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
             setShowGroupDetails(false)
             setSelectedGroup(updatedGroup)
           }}
+        />
+      )}
+
+      {isGuestMode && (
+        <IncomingCallModal
+          show={showIncomingCallModal}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+          caller={incomingCallData?.sender}
+        />
+      )}
+
+      {isGuestMode && isVideoCallVisible && peerUser?._id && (
+        <VideoCall
+          isCaller={isCaller}
+          currentUser={currentUser}
+          selectedUser={peerUser}
+          onClose={() => setIsVideoCallVisible(false)}
         />
       )}
     </div>

@@ -65,6 +65,24 @@ const JoinGroupRoom = (groupId) => {
     socket.emit('join group room', groupId)
 };
 
+const GroupTypingStarted = (groupId, senderUserId) => {
+    socket.emit('group typing', { groupId, sender: senderUserId })
+}
+
+const GroupTypingStopped = (groupId, senderUserId) => {
+    socket.emit('group stop typing', { groupId, sender: senderUserId })
+}
+
+const onGroupTyping = (callback) => {
+    socket.off('group typing')
+    socket.on('group typing', callback)
+}
+
+const onGroupStopTyping = (callback) => {
+    socket.off('group stop typing')
+    socket.on('group stop typing', callback)
+}
+
 const SendGroupMessage = (messageObj) => {
     socket.emit('group message', messageObj)
 };
@@ -118,6 +136,24 @@ const onReadGroupMessages = (callback) => {
         callback(data)
     })
 }
+
+const emitGuestMessageDelivered = (groupId, tempId, messageSender, deliveredBy) => {
+    socket.emit('guest message delivered', { groupId, tempId, messageSender, deliveredBy })
+}
+
+const onGuestMessageDelivered = (callback) => {
+    socket.off('guest message delivered')
+    socket.on('guest message delivered', callback)
+}
+
+const emitGuestMessageRead = (groupId, tempIds, messageSender, readBy) => {
+    socket.emit('guest message read', { groupId, tempIds, messageSender, readBy })
+}
+
+const onGuestMessageRead = (callback) => {
+    socket.off('guest message read')
+    socket.on('guest message read', callback)
+}
 const emitUserOnline = (userId) => {
     socket.emit('user online', { userId })
 }
@@ -136,4 +172,4 @@ const onUserOffline = (callback) => {
     socket.on('user offline', callback)
 }
 
-export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator,JoinGroupRoom,SendGroupMessage,OnGroupMessage,deleteMessage,onDeleteMessage,deleteGroupMessage,onDeleteGroupMessage,readMessages,onReadMessages,readGroupMessages,onReadGroupMessages,onUserOffline,onUserOnline,emitUserOffline,emitUserOnline}
+export {ClientSocket,EmitMessage,JoinRoom,ChangeStatus,TypingStarted,TypingIndicator,TypingStopped,StopTypingIndicator,MessageRead,MessageReadIndicator,JoinGroupRoom,GroupTypingStarted,GroupTypingStopped,onGroupTyping,onGroupStopTyping,SendGroupMessage,OnGroupMessage,deleteMessage,onDeleteMessage,deleteGroupMessage,onDeleteGroupMessage,readMessages,onReadMessages,readGroupMessages,onReadGroupMessages,emitGuestMessageDelivered,onGuestMessageDelivered,emitGuestMessageRead,onGuestMessageRead,onUserOffline,onUserOnline,emitUserOffline,emitUserOnline}

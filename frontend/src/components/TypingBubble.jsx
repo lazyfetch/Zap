@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function TypingBubble() {
+export default function TypingBubble({ text = "Typing..." }) {
   return (
     <div className="flex justify-start animate-fade-in">
       <div className="max-w-xs">
@@ -10,6 +10,7 @@ export default function TypingBubble() {
             <span className="dot bg-white"></span>
             <span className="dot bg-white"></span>
           </span>
+          <span className="ml-2 text-xs text-white/90">{text}</span>
         </div>
       </div>
       <style>

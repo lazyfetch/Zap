@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiSend, FiSmile, FiPaperclip, FiMic } from "react-icons/fi";
-import { SendGroupMessage } from "../ClientSocket/ClientSocket.jsx";
+import { GroupTypingStarted, GroupTypingStopped, SendGroupMessage } from "../ClientSocket/ClientSocket.jsx";
 import {API_URL} from "../config.js"
 export default function GroupMessageInput({ selectedGroup, currentUser, onMessageSent, isGuestMode = false }) {
   const [message, setMessage] = useState("");
@@ -9,6 +9,8 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
   const [selectedFile, setSelectedFile] = useState(null)
   const [errorDialog, setErrorDialog] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
+  const typingTimeoutRef = useRef(null)
   
   const MAX_SIZE = 10 * 1024 * 1024
   const ALLOWED_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/csv", "application/xml", "text/plain", "image/jpeg", "image/png"]
@@ -64,6 +66,14 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
     });
 
     setMessage("")
+    if (isTyping) {
+      GroupTypingStopped(selectedGroup._id, currentUser._id)
+      setIsTyping(false)
+    }
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+      typingTimeoutRef.current = null
+    }
     setSelectedFile(null)
     setIsSending(false)
     if (inputRef.current) 
@@ -92,6 +102,37 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
     }
     setSelectedFile(file)
   };
+
+  const handleInputChange = (e) => {
+    const nextValue = e.target.value
+    setMessage(nextValue)
+
+    if (!isTyping && nextValue.trim().length > 0) {
+      GroupTypingStarted(selectedGroup._id, currentUser._id)
+      setIsTyping(true)
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      GroupTypingStopped(selectedGroup._id, currentUser._id)
+      setIsTyping(false)
+      typingTimeoutRef.current = null
+    }, 1200)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+      if (isTyping) {
+        GroupTypingStopped(selectedGroup._id, currentUser._id)
+      }
+    }
+  }, [selectedGroup._id, currentUser._id, isTyping])
 
   return (
     <div className="border-t border-gray-900 bg-black p-4">
@@ -157,7 +198,7 @@ export default function GroupMessageInput({ selectedGroup, currentUser, onMessag
           className="flex-1 bg-black border border-gray-800 rounded-md px-4 py-2 text-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-700"
           placeholder="Type your message..."
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={handleInputChange}
         />
         <button
           type="submit"
