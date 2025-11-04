@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getGuestRoom, joinGuestSession, loginUser, registerUser, logoutUser, refreshTokens, startGuestSession } from "../controllers/auth.controllers.js";
 import { verifyLogin } from "../middleware/auth.middleware.js";
+import { guestJoinLimiter, guestStartLimiter } from "../middleware/guestRateLimit.middleware.js";
 import passport from "../middleware/passport.js";
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
@@ -9,8 +10,8 @@ const authRouter = Router();
 
 authRouter.route("/register").post(registerUser);
 authRouter.route("/login").post(loginUser);
-authRouter.route("/guest/start").post(startGuestSession);
-authRouter.route("/guest/join").post(joinGuestSession);
+authRouter.route("/guest/start").post(guestStartLimiter, startGuestSession);
+authRouter.route("/guest/join").post(guestJoinLimiter, joinGuestSession);
 authRouter.route("/guest/room").get(verifyLogin, getGuestRoom);
 authRouter.route("/refresh-token").get(refreshTokens);
 authRouter.route("/logout").post(verifyLogin, logoutUser);

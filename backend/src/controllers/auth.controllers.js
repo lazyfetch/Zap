@@ -69,6 +69,18 @@ const createUniqueGuestIdentity = async () => {
     throw new ApiError(500, "Could not generate a guest identity");
 }
 
+const buildGuestRoomPayload = async (roomId) => {
+    const room = await Group.findById(roomId)
+        .select("_id name members isGuestRoom guestMaxMembers guestTokenExpiresAt")
+        .populate("members", "username avatar online lastSeen")
+
+    if (!room) {
+        throw new ApiError(404, "Guest room not found")
+    }
+
+    return room
+}
+
 const issueAuthResponse = async (user) => {
     const accessToken = generateAccessToken(user._id)
     const refreshToken = generateRefreshToken(user._id)
@@ -366,16 +378,13 @@ const startGuestSession = async (req, res, next) => {
         const inviteBase = req.get("origin") || process.env.CORS_ORIGIN;
         const inviteLink = buildGuestInviteLink(inviteToken, inviteBase);
 
+        const roomPayload = await buildGuestRoomPayload(room._id)
+
         const payload = {
             user,
             accessToken,
             refreshToken,
-            room: {
-                _id: room._id,
-                name: room.name,
-                members: room.members,
-                isGuestRoom: true,
-            },
+            room: roomPayload,
             inviteToken,
             inviteLink,
             expiresAt: inviteExpiry,
@@ -449,16 +458,13 @@ const joinGuestSession = async (req, res, next) => {
         const { user, accessToken, refreshToken } = await issueAuthResponse(guestUser);
         await markGuestRoomActive(room._id);
 
+        const roomPayload = await buildGuestRoomPayload(room._id)
+
         const responsePayload = {
             user,
             accessToken,
             refreshToken,
-            room: {
-                _id: room._id,
-                name: room.name,
-                members: room.members,
-                isGuestRoom: true,
-            },
+            room: roomPayload,
         };
 
         if (USE_COOKIES) {
@@ -482,7 +488,9 @@ const getGuestRoom = async (req, res, next) => {
             throw new ApiError(403, "Guest room is only available for guest users");
         }
 
-        const room = await Group.findById(user.guestRoom).select("_id name members isGuestRoom guestMaxMembers guestTokenExpiresAt");
+        const room = await Group.findById(user.guestRoom)
+            .select("_id name members isGuestRoom guestMaxMembers guestTokenExpiresAt")
+            .populate("members", "username avatar online lastSeen");
         if (!room || !room.isGuestRoom) {
             throw new ApiError(404, "Guest room not found");
         }
