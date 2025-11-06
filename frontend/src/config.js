@@ -1,8 +1,16 @@
 const envApiUrl = import.meta.env.VITE_API_URL;
 const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
 
-export const API_URL = envApiUrl !== undefined ? envApiUrl : 'http://localhost:3000';
-export const SOCKET_URL = envSocketUrl !== undefined ? envSocketUrl : 'http://localhost:3000';
+const normalizeEnvUrl = (value, fallback) => {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  const trimmed = String(value).trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+};
+
+export const API_URL = normalizeEnvUrl(envApiUrl, 'http://localhost:3000');
+export const SOCKET_URL = normalizeEnvUrl(envSocketUrl, 'http://localhost:3000');
 
 const DEFAULT_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
