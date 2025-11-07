@@ -281,6 +281,26 @@ io.on('connection', (socket) => {
     io.to(receiverId).emit('reject call', { sender });
   });
 
+  socket.on('accept call', async ({ sender, receiver }) => {
+    const senderUser = await getUserContext(sender);
+    const receiverId = resolveUserId(receiver);
+    if (!senderUser || !receiverId) {
+      return;
+    }
+
+    if (senderUser.isGuest) {
+      const relation = await canGuestReachPeer(senderUser._id, receiverId);
+      if (!relation) {
+        return;
+      }
+      await markGuestRoomActive(relation.room._id);
+      io.to(receiverId).emit('accept call', { sender });
+      return;
+    }
+
+    io.to(receiverId).emit('accept call', { sender });
+  });
+
   socket.on('delete',({msgObj,receiver})=>{
     getUserContext(msgObj?.sender).then((senderUser) => {
       if (senderUser?.isGuest) {

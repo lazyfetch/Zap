@@ -4,7 +4,7 @@ import MessageBubble from "./MessageBubble.jsx";
 import TypingBubble from "./TypingBubble.jsx";
 import { FiPhone, FiVideo, FiMoreVertical,FiTrash2 } from "react-icons/fi";
 import VideoCall from "./VideoCall.jsx";
-import { StartCall, ReceiveCall, receiveEndCall, sendEndCall,sendRejectCall } from "../webRTC/webRTCSockets.js"; 
+import { StartCall, ReceiveCall, receiveAcceptCall, receiveEndCall, receiveRejectCall, sendAcceptCall, sendEndCall,sendRejectCall } from "../webRTC/webRTCSockets.js"; 
 import IncomingCallModal from "./IncomingCallModal.jsx";
 import FileMessageBubble from "./FileMessageBubble.jsx";
 import socket from "../socket.js";
@@ -19,12 +19,28 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
   const [incomingCallData, setIncomingCallData] = useState(null);
   const [isVideoCallVisible, setIsVideoCallVisible] = useState(false); 
   const [isCaller, setIsCaller] = useState(false);
+  const [isWaitingForAccept, setIsWaitingForAccept] = useState(false);
   const [userStatus, setUserStatus] = useState({
     online: selectedUser.online || false,
     lastSeen: selectedUser.lastSeen || null
   });
   const [avatarError, setAvatarError] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  const primeMediaPermissions = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      })
+      stream.getTracks().forEach((track) => track.stop())
+      return true
+    }
+    catch (error)
+    {
+      return false
+    }
+  }
 
   const handleClearChat = async () => {
   const confirmed = window.confirm(
@@ -101,19 +117,26 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
     fetchUserStatus();
   }, [selectedUser._id]);
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
+    await primeMediaPermissions()
+    sendAcceptCall(currentUser, selectedUser)
     setShowIncomingCallModal(false);
+    setIsVideoCallVisible(true)
   };
 
   const handleReject = () => {
     setShowIncomingCallModal(false);
     setIsVideoCallVisible(false);
+    setIsWaitingForAccept(false)
     sendRejectCall(currentUser, selectedUser);
   };
 
   useEffect(() => {
     const onEndCall = () => {
       setIsVideoCallVisible(false);
+      setIsWaitingForAccept(false)
+      setShowIncomingCallModal(false)
+      setIncomingCallData(null)
       
       const videoElements = document.querySelectorAll('video');
       videoElements.forEach(video => {
@@ -138,10 +161,30 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
     setIncomingCallData(data);
     setShowIncomingCallModal(true);
     setIsCaller(false);
-    setIsVideoCallVisible(true);
+    setIsVideoCallVisible(false);
+    primeMediaPermissions()
   };
   ReceiveCall(onCall);
 }, []);
+
+  useEffect(() => {
+    receiveAcceptCall(({ sender }) => {
+      if (sender?._id === selectedUser._id || sender === selectedUser._id) {
+        setIsWaitingForAccept(false)
+        setIsVideoCallVisible(true)
+        setIsCaller(true)
+      }
+    })
+
+    receiveRejectCall(({ sender }) => {
+      if (sender?._id === selectedUser._id || sender === selectedUser._id) {
+        setIsWaitingForAccept(false)
+        setIsVideoCallVisible(false)
+        setShowIncomingCallModal(false)
+        setIncomingCallData(null)
+      }
+    })
+  }, [selectedUser._id])
 
   const getMessages = async () => {
     const accessToken = localStorage.getItem("accessToken");
@@ -438,10 +481,12 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
         <div className="flex space-x-3">
           <button
             className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors"
-            onClick={() => {
+            onClick={async () => {
+              await primeMediaPermissions()
               StartCall(currentUser, selectedUser);
               setIsCaller(true);
-              setIsVideoCallVisible(true);
+              setIsVideoCallVisible(false);
+              setIsWaitingForAccept(true);
             }}
           >
             <FiVideo size={20} />
@@ -518,9 +563,26 @@ export default function ChatWindow({ currentUser, selectedUser, setSelectedGroup
         selectedUser={selectedUser} 
         onClose={() => {
           setIsVideoCallVisible(false);
+          setIsWaitingForAccept(false)
           sendEndCall(currentUser, selectedUser);
         }} 
       />}
+      {isWaitingForAccept && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg px-5 py-4 text-center">
+            <div className="text-gray-200 text-sm">Calling {selectedUser.username}...</div>
+            <button
+              className="mt-3 px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-sm"
+              onClick={() => {
+                setIsWaitingForAccept(false)
+                sendEndCall(currentUser, selectedUser)
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       <IncomingCallModal
         show={showIncomingCallModal}
         onAccept={handleAccept}

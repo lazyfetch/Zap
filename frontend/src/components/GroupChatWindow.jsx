@@ -8,7 +8,7 @@ import GroupMessageInput from "./GroupMessageInput.jsx";
 import TypingBubble from "./TypingBubble.jsx";
 import VideoCall from "./VideoCall.jsx";
 import IncomingCallModal from "./IncomingCallModal.jsx";
-import { ReceiveCall, receiveEndCall, sendRejectCall, StartCall } from "../webRTC/webRTCSockets.js";
+import { ReceiveCall, receiveAcceptCall, receiveEndCall, receiveRejectCall, sendAcceptCall, sendRejectCall, StartCall } from "../webRTC/webRTCSockets.js";
 import {API_URL} from "../config.js"
 
 export default function GroupChatWindow({ currentUser, selectedGroup, setSelectedGroup, refreshKey, isGuestMode = false }) {
@@ -19,8 +19,25 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
   const [incomingCallData, setIncomingCallData] = useState(null);
   const [isVideoCallVisible, setIsVideoCallVisible] = useState(false);
   const [isCaller, setIsCaller] = useState(false);
+  const [isWaitingForAccept, setIsWaitingForAccept] = useState(false);
+  const [activeCallPeer, setActiveCallPeer] = useState(null);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
+
+  const primeMediaPermissions = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      })
+      stream.getTracks().forEach((track) => track.stop())
+      return true
+    }
+    catch (error)
+    {
+      return false
+    }
+  }
 
   const getMemberId = (member) => {
     if (!member) {
@@ -56,6 +73,17 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
     return getMemberName(member)
   }
 
+  const normalizePeer = (userLike) => {
+    const id = getMemberId(userLike)
+    if (!id) {
+      return null
+    }
+    return {
+      _id: id,
+      username: getMemberName(userLike)
+    }
+  }
+
   const JoinRoom = () => {
     JoinGroupRoom(selectedGroup._id)
   }
@@ -63,6 +91,55 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
   useEffect(() => {
     JoinRoom()
   }, [])
+
+  useEffect(() => {
+    if (!isGuestMode) {
+      return
+    }
+
+    let mounted = true
+
+    const refreshGuestRoom = async () => {
+      try {
+        const accessToken = localStorage.getItem("accessToken")
+        const response = await fetch(`${API_URL}/api/v1/auth/guest/room`, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+        const data = await response.json()
+        if (!mounted || !response.ok || !data.success || !data.data?.room) {
+          return
+        }
+
+        setSelectedGroup((prev) => {
+          if (!prev) {
+            return data.data.room
+          }
+
+          const prevIds = (prev.members || []).map((member) => getMemberId(member)).filter(Boolean).sort().join(",")
+          const nextIds = (data.data.room.members || []).map((member) => getMemberId(member)).filter(Boolean).sort().join(",")
+
+          if (prevIds === nextIds && prev.name === data.data.room.name) {
+            return prev
+          }
+
+          return data.data.room
+        })
+      } catch (error) {
+      }
+    }
+
+    refreshGuestRoom()
+    const interval = setInterval(refreshGuestRoom, 3000)
+
+    return () => {
+      mounted = false
+      clearInterval(interval)
+    }
+  }, [isGuestMode, setSelectedGroup])
 
   useEffect(() => {
     const getGroupMessages = async () => {
@@ -268,10 +345,16 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
       if (!isGuestMode) {
         return
       }
+      const callPeer = normalizePeer(data?.sender)
+      if (!callPeer?._id) {
+        return
+      }
       setIncomingCallData(data)
+      setActiveCallPeer(callPeer)
       setShowIncomingCallModal(true)
       setIsCaller(false)
-      setIsVideoCallVisible(true)
+      setIsVideoCallVisible(false)
+      primeMediaPermissions()
     }
 
     ReceiveCall(onCall)
@@ -280,33 +363,75 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
   useEffect(() => {
     const onEndCall = () => {
       setIsVideoCallVisible(false)
+      setIsWaitingForAccept(false)
       setShowIncomingCallModal(false)
+      setIncomingCallData(null)
+      setActiveCallPeer(null)
     }
 
     receiveEndCall(onEndCall)
   }, [])
 
-  const handleStartGuestCall = () => {
+  const handleStartGuestCall = async () => {
     if (!peerUser?._id) {
       return
     }
 
+    await primeMediaPermissions()
     setIsCaller(true)
-    setIsVideoCallVisible(true)
+    setActiveCallPeer(peerUser)
+    setIsVideoCallVisible(false)
+    setIsWaitingForAccept(true)
     StartCall(currentUser, peerUser)
   }
 
-  const handleAcceptCall = () => {
+  const handleAcceptCall = async () => {
+    await primeMediaPermissions()
+    if (activeCallPeer?._id) {
+      sendAcceptCall(currentUser, activeCallPeer)
+    }
     setShowIncomingCallModal(false)
+    setIsVideoCallVisible(true)
   }
 
   const handleRejectCall = () => {
     setShowIncomingCallModal(false)
     setIsVideoCallVisible(false)
-    if (peerUser?._id) {
-      sendRejectCall(currentUser, peerUser)
+    setIsWaitingForAccept(false)
+    if (activeCallPeer?._id) {
+      sendRejectCall(currentUser, activeCallPeer)
     }
+    setActiveCallPeer(null)
   }
+
+  useEffect(() => {
+    if (!isGuestMode) {
+      return
+    }
+
+    receiveAcceptCall(({ sender }) => {
+      const senderId = getMemberId(sender)
+      if (!senderId || senderId !== peerUser?._id) {
+        return
+      }
+      setIsWaitingForAccept(false)
+      setIsVideoCallVisible(true)
+      setIsCaller(true)
+      setActiveCallPeer(peerUser)
+    })
+
+    receiveRejectCall(({ sender }) => {
+      const senderId = getMemberId(sender)
+      if (!senderId || senderId !== peerUser?._id) {
+        return
+      }
+      setIsWaitingForAccept(false)
+      setIsVideoCallVisible(false)
+      setShowIncomingCallModal(false)
+      setIncomingCallData(null)
+      setActiveCallPeer(null)
+    })
+  }, [isGuestMode, peerUser?._id])
 
   const typingText = typingUsers.length === 0
     ? ""
@@ -456,13 +581,37 @@ export default function GroupChatWindow({ currentUser, selectedGroup, setSelecte
         />
       )}
 
-      {isGuestMode && isVideoCallVisible && peerUser?._id && (
+      {isGuestMode && isVideoCallVisible && activeCallPeer?._id && (
         <VideoCall
           isCaller={isCaller}
           currentUser={currentUser}
-          selectedUser={peerUser}
-          onClose={() => setIsVideoCallVisible(false)}
+          selectedUser={activeCallPeer}
+          onClose={() => {
+            setIsVideoCallVisible(false)
+            setIsWaitingForAccept(false)
+            setActiveCallPeer(null)
+          }}
         />
+      )}
+
+      {isGuestMode && isWaitingForAccept && activeCallPeer?._id && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg px-5 py-4 text-center">
+            <div className="text-gray-200 text-sm">Calling {activeCallPeer.username}...</div>
+            <button
+              className="mt-3 px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-sm"
+              onClick={() => {
+                if (activeCallPeer?._id) {
+                  sendRejectCall(currentUser, activeCallPeer)
+                }
+                setIsWaitingForAccept(false)
+                setActiveCallPeer(null)
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
