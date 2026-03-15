@@ -555,6 +555,10 @@ import userRouter from "./src/routes/user.routes.js";
 import groupRouter from "./src/routes/group.routes.js";
 import fileRouter from "./src/routes/file.routes.js";
 
+app.get('/health', (req, res) => {
+  res.status(200).send('Server is awake and healthy!');
+});
+
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/group", groupRouter);

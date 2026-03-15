@@ -40,6 +40,7 @@ Authentication and security:
 - Google OAuth login flow via Passport
 - JWT-based authorization for protected routes
 - Session support for OAuth flows
+- Guest invite tokens with expiry and room-scoped validation
 
 ## Real-Time System Design
 
@@ -144,6 +145,14 @@ Backend:
 - Session-assisted OAuth flow
 - Route-level auth enforcement via middleware
 
+### Guest Demo Mode
+
+- Private temporary room with a strict two-guest maximum
+- Signed invite link flow with token expiry and nonce validation
+- Guest-only event scoping for chat, typing, presence, and video calling
+- Inactivity/expiry cleanup for guest rooms and guest accounts
+
+
 ## Feature Matrix
 
 | Domain | Capability | Implementation Notes |
@@ -159,7 +168,13 @@ Backend:
 | Calling | Signaling workflow | Offer/answer/ICE exchange over Socket.IO |
 | Calling | Network reliability | STUN/TURN ICE server pipeline with relay fallback |
 | Auth | Identity and sessions | Google OAuth, Passport, JWT, and session middleware |
+| Auth | Guest demo access | Expiring two-user room links with scoped permissions |
 | Persistence | Core data model | MongoDB models for users, messages, and groups |
+
+## API Notes
+
+- Health check: `GET /health`
+- Success response: `200 OK` with body `Server is awake and healthy!`
 
 ## Codebase Organization
 

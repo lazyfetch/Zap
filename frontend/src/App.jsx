@@ -11,6 +11,7 @@ import GroupChatWindow from "./components/GroupChatWindow";
 import {API_URL} from "./config.js"
 
 function App() {
+  const BRAND_LOGO = "/brand-logo.png";
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -312,9 +313,19 @@ function App() {
       <div className="flex h-screen overflow-hidden bg-black text-gray-100">
         <div className="flex flex-col flex-1 overflow-hidden bg-black">
           <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
-            <div>
-              <h1 className="text-xl font-bold text-amber-400">Zap Demo Room</h1>
-              <p className="text-xs text-gray-400 mt-1">Temporary guest session for recruiter testing</p>
+            <div className="flex items-center gap-3">
+              <img
+                src={BRAND_LOGO}
+                alt="Zap"
+                className="w-8 h-8 rounded-md object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+              <div>
+                <h1 className="text-xl font-bold text-amber-400">Zap Demo Room</h1>
+                <p className="text-xs text-gray-400 mt-1">Temporary guest session for recruiter testing</p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -359,7 +370,17 @@ function App() {
         style={{ width: sidebarWidth }}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
-          <h1 className="text-xl font-bold text-amber-400">Zap Chat</h1>
+          <div className="flex items-center gap-3">
+            <img
+              src={BRAND_LOGO}
+              alt="Zap"
+              className="w-8 h-8 rounded-md object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <h1 className="text-xl font-bold text-amber-400">Zap Chat</h1>
+          </div>
           <button
             onClick={handleLogout}
             className="p-2 rounded-full hover:bg-gray-900 text-gray-400 hover:text-amber-400 transition-colors"
